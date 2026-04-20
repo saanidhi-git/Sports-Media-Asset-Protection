@@ -1,0 +1,73 @@
+<div class="login-container">
+  <!-- MINI TOP NAV BRANDING -->
+  <nav class="mini-nav">
+    <div class="navbar-brand">
+      <span class="brand-icon">🛡️</span>
+      <div>
+        <h1>SHIELD_MEDIA</h1>
+        <div class="brand-subtitle">VERIFIED SECURED GATEWAY</div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="auth-card">
+    <h2 class="page-title">ACCESS THE VAULT</h2>
+    <p class="page-subtitle">Secure endpoint for tactical sports media analysis.</p>
+
+    <!-- AUTH TABS -->
+    <div class="auth-tabs">
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab() === 'signin'"
+        (click)="setTab('signin')">SIGN IN</button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab() === 'create'"
+        (click)="setTab('create')">CREATE ACCOUNT</button>
+    </div>
+
+    <!-- FORM SECTION -->
+    <div class="form-body">
+      <div class="form-row">
+        <label>OPERATOR EMAIL / ID</label>
+        <input type="text" placeholder="OPERATOR@SHIELD.MEDIA">
+      </div>
+
+      <div class="form-row">
+        <div class="label-row">
+          <label>PASSWORD</label>
+          <a href="#" class="forgot-link" *ngIf="activeTab() === 'signin'">FORGOT?</a>
+        </div>
+        <input type="password" placeholder="••••••••••••">
+      </div>
+
+      <!-- CONFIRM PASSWORD FOR REGISTRATION -->
+      <div class="form-row" *ngIf="activeTab() === 'create'">
+        <label>CONFIRM PASSWORD</label>
+        <input type="password" placeholder="••••••••••••">
+      </div>
+
+      <div class="checkbox-row">
+        <div class="checkbox-group">
+          <input type="checkbox" id="keep-active">
+          <label for="keep-active">KEEP SECURE SESSION ACTIVE</label>
+        </div>
+      </div>
+
+      <button class="btn btn-success btn-full btn-pill">
+        {{ activeTab() === 'signin' ? 'ESTABLISH CONNECTION' : 'INITIALIZE ACCOUNT' }}
+      </button>
+
+      <div class="divider">
+        <span>EXTERNAL VERIFICATION</span>
+      </div>
+
+      <div class="sso-grid">
+        <button class="btn btn-primary btn-pill btn-sm">GOOGLE ID</button>
+        <button class="btn btn-pill btn-sm" style="background:var(--white);">ENTERPRISE SSO</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- FOOTER INFO REMOVED -->
+</div>
