@@ -1,0 +1,158 @@
+<div class="dashboard-container">
+  <!-- SIDEBAR NAVIGATION -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-icon">🛡️</span>
+      <span class="brand-name">SHIELD_MEDIA</span>
+    </div>
+    
+    <nav class="nav-links">
+      <a href="#" class="nav-item active">
+        <span class="icon">📊</span> DASHBOARD
+      </a>
+      <a href="#" class="nav-item">
+        <span class="icon">📦</span> ASSET VAULT
+      </a>
+      <a href="#" class="nav-item">
+        <span class="icon">📡</span> LIVE MONITOR
+      </a>
+      <a href="#" class="nav-item">
+        <span class="icon">🔐</span> SECURITY KEYS
+      </a>
+      <a href="#" class="nav-item">
+        <span class="icon">⚙️</span> SYSTEM CONFIG
+      </a>
+    </nav>
+
+    <div class="operator-profile">
+      <div class="avatar"></div>
+      <div class="info">
+        <div class="name">OP: {{ operatorName() }}</div>
+        <div class="status">STATUS: <span class="status-optimal">{{ securityStatus() }}</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="main-content">
+    <header class="top-header">
+      <div class="header-left">
+        <h1>MISSION CONTROL</h1>
+        <p>Operational overview of media asset protection protocols.</p>
+      </div>
+      <div class="header-right">
+        <div class="stat-pill">
+          <span class="label">ACTIVE NODES</span>
+          <span class="value">142</span>
+        </div>
+        <div class="stat-pill">
+          <span class="label">SECURE UPTIME</span>
+          <span class="value text-neon">99.9%</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- STATS GRID -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-header">TOTAL ASSETS</div>
+        <div class="stat-value">1,284</div>
+        <div class="stat-footer">+12 since last rotation</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-header">THREATS NEUTRALIZED</div>
+        <div class="stat-value text-neon">42</div>
+        <div class="stat-footer">24H monitoring active</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-header">STORAGE USED</div>
+        <div class="stat-value">84%</div>
+        <div class="stat-footer">782.4 TB / 1 PB</div>
+      </div>
+    </section>
+
+    <!-- ASSET MANAGEMENT & VAULT -->
+    <section class="management-section">
+      <div class="section-header-row">
+        <div class="section-title">ASSET MANAGEMENT & VAULT</div>
+        <button class="btn-text">BROWSE ALL VAULT</button>
+      </div>
+      
+      <div class="square-asset-grid">
+        <!-- ADD NEW ASSET (RECTANGULAR) -->
+        <div class="asset-sq-card add-new-sq" routerLink="/register-asset">
+          <div class="asset-sq-img add-placeholder">
+            <span class="add-icon">➕</span>
+          </div>
+          <div class="asset-sq-info">
+            <div class="asset-sq-name">REGISTER NEW ASSET</div>
+            <div class="asset-sq-status neon-text">SYSTEM READY</div>
+          </div>
+        </div>
+
+        <!-- PREVIOUS ASSETS -->
+        <div class="asset-sq-card" *ngFor="let asset of securedAssets">
+          <div class="asset-sq-img">
+            <img [src]="asset.img" [alt]="asset.name">
+            <div class="asset-sq-overlay">
+              <span class="type-tag">{{ asset.type }}</span>
+            </div>
+          </div>
+          <div class="asset-sq-info">
+            <div class="asset-sq-name">{{ asset.name }}</div>
+            <div class="asset-sq-status">SECURED</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTENT GRID -->
+    <div class="content-grid">
+      <!-- ASSET LIST -->
+      <section class="asset-section card">
+        <div class="card-header">
+          <h3>RECENT ASSET ACTIVITY</h3>
+          <button class="btn-text">VIEW ALL</button>
+        </div>
+        <table class="asset-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>NAME</th>
+              <th>STATUS</th>
+              <th>ENCRYPTION</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let asset of assets">
+              <td class="id-cell">{{ asset.id }}</td>
+              <td class="name-cell">{{ asset.name }}</td>
+              <td>
+                <span class="status-badge" [class]="asset.status.toLowerCase()">
+                  {{ asset.status }}
+                </span>
+              </td>
+              <td>{{ asset.encryption }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- SYSTEM LOGS -->
+      <section class="logs-section card">
+        <div class="card-header">
+          <h3>SYSTEM LOGS</h3>
+          <span class="status-indicator">LIVE</span>
+        </div>
+        <div class="log-list">
+          <div class="log-entry" *ngFor="let log of systemLogs">
+            <span class="log-time">[{{ log.time }}]</span>
+            <span class="log-event">{{ log.event }}</span>
+            <span class="log-node">@{{ log.node }}</span>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full btn-sm mt-auto">DOWNLOAD FULL LOG</button>
+      </section>
+    </div>
+  </main>
+</div>

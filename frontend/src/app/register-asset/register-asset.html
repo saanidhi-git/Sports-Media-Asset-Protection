@@ -1,0 +1,146 @@
+<div class="dashboard-container">
+  <!-- SIDEBAR NAVIGATION -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-icon">🛡️</span>
+      <span class="brand-name">SHIELD_MEDIA</span>
+    </div>
+    
+    <nav class="nav-links">
+      <a routerLink="/home" class="nav-item">
+        <span class="icon">📊</span> DASHBOARD
+      </a>
+      <a href="#" class="nav-item active">
+        <span class="icon">➕</span> REGISTER ASSET
+      </a>
+      <a href="#" class="nav-item">
+        <span class="icon">📦</span> ASSET VAULT
+      </a>
+      <a href="#" class="nav-item">
+        <span class="icon">📡</span> LIVE MONITOR
+      </a>
+      <a href="#" class="nav-item">
+        <span class="icon">🔐</span> SECURITY KEYS
+      </a>
+      <a href="#" class="nav-item">
+        <span class="icon">⚙️</span> SYSTEM CONFIG
+      </a>
+    </nav>
+
+    <div class="operator-profile">
+      <div class="avatar"></div>
+      <div class="info">
+        <div class="name">OP: {{ operatorName() }}</div>
+        <div class="status">STATUS: <span class="status-optimal">{{ securityStatus() }}</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="main-content">
+    <header class="top-header">
+      <div class="header-left">
+        <h1>ASSET REGISTRATION</h1>
+        <p>Initialize protection protocol for new media content.</p>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-secondary btn-sm" (click)="cancel()">CANCEL</button>
+      </div>
+    </header>
+
+    <div class="registration-page-body">
+      <div class="registration-form-container card">
+        <!-- IDENTIFICATION -->
+        <section class="form-section">
+          <h3 class="section-title">01. IDENTIFICATION</h3>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>ASSET NAME</label>
+              <input type="text" [(ngModel)]="assetName" placeholder="e.g., PREMIER_LEAGUE_FINALS_B-ROLL">
+            </div>
+            <div class="input-group">
+              <label>OWNER / ORGANIZATION</label>
+              <input type="text" [(ngModel)]="ownerCompany" placeholder="e.g., STAR SPORTS NETWORK">
+            </div>
+          </div>
+          <div class="input-group mt-20">
+            <label>MATCH DESCRIPTION</label>
+            <textarea [(ngModel)]="matchDescription" placeholder="Enter detailed match description, teams, venue, etc..." rows="3"></textarea>
+          </div>
+        </section>
+
+        <!-- DATA INGESTION -->
+        <section class="form-section">
+          <h3 class="section-title">02. DATA INGESTION</h3>
+          <div class="file-upload-grid">
+            <div class="upload-col">
+              <label class="sub-label">MEDIA ASSET FILE</label>
+              <label class="file-drop-zone" [class.file-selected]="selectedFile()">
+                <input type="file" (change)="onFileSelected($event)" hidden>
+                <span class="upload-icon">{{ selectedFile() ? '📄' : '📤' }}</span>
+                <span class="upload-text">
+                  {{ selectedFile() ? selectedFile()?.name : 'SELECT ASSET FILE' }}
+                </span>
+              </label>
+            </div>
+            
+            <div class="upload-col">
+              <label class="sub-label">MATCH DESCRIPTION / SCOREBOARD (TXT, PDF, MD)</label>
+              <label class="file-drop-zone" [class.file-selected]="scoreboardFile()">
+                <input type="file" (change)="onScoreboardFileSelected($event)" accept=".txt,.pdf,.md" hidden>
+                <span class="upload-icon">{{ scoreboardFile() ? '📊' : '📜' }}</span>
+                <span class="upload-text">
+                  {{ scoreboardFile() ? scoreboardFile()?.name : 'UPLOAD SCOREBOARD DATA' }}
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div class="frames-preview-area" *ngIf="isProcessing() || generatedFrames().length > 0">
+            <label class="sub-label">AUTOMATIC FRAME GENERATION</label>
+            <div class="frames-scroll-container">
+              <div class="frame-placeholder" *ngIf="isProcessing()">
+                <div class="loader"></div>
+                <span>EXTRACTING KEYFRAMES...</span>
+              </div>
+              <div class="frame-item" *ngFor="let frame of generatedFrames()">
+                <img [src]="frame" alt="Asset Frame">
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- MEDIA TO SCRAP -->
+        <section class="form-section">
+          <h3 class="section-title">03. MEDIA TO SCRAP</h3>
+          <p class="section-desc">Select platforms for automated copyright monitoring and scraping.</p>
+          <div class="scrap-grid">
+            <button class="scrap-card" [class.active]="mediaToScrap.youtube" (click)="toggleScrapMedia('youtube')">
+              <span class="scrap-icon">🎥</span>
+              <span class="scrap-name">YOUTUBE</span>
+              <span class="scrap-status">{{ mediaToScrap.youtube ? 'ENABLED' : 'DISABLED' }}</span>
+            </button>
+            <button class="scrap-card" [class.active]="mediaToScrap.reddit" (click)="toggleScrapMedia('reddit')">
+              <span class="scrap-icon">🤖</span>
+              <span class="scrap-name">REDDIT</span>
+              <span class="scrap-status">{{ mediaToScrap.reddit ? 'ENABLED' : 'DISABLED' }}</span>
+            </button>
+            <button class="scrap-card" [class.active]="mediaToScrap.instagram" (click)="toggleScrapMedia('instagram')">
+              <span class="scrap-icon">📸</span>
+              <span class="scrap-name">INSTAGRAM</span>
+              <span class="scrap-status">{{ mediaToScrap.instagram ? 'ENABLED' : 'DISABLED' }}</span>
+            </button>
+          </div>
+        </section>
+
+        <footer class="form-actions">
+          <button class="btn btn-secondary" (click)="cancel()">ABORT REGISTRATION</button>
+          <button class="btn btn-success" (click)="register()" [disabled]="!selectedFile() || !assetName">
+            ESTABLISH PROTECTION
+            <span class="btn-icon">→</span>
+          </button>
+        </footer>
+      </div>
+    </div>
+  </main>
+</div>

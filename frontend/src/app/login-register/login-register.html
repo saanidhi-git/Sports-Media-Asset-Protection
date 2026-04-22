@@ -11,8 +11,10 @@
   </nav>
 
   <main class="auth-card">
-    <h2 class="page-title">ACCESS THE VAULT</h2>
-    <p class="page-subtitle">Secure endpoint for tactical sports media analysis.</p>
+    <h2 class="page-title">{{ activeTab() === 'signin' ? 'ACCESS THE VAULT' : 'INITIALIZE PROTOCOL' }}</h2>
+    <p class="page-subtitle">
+      {{ activeTab() === 'signin' ? 'Secure endpoint for tactical sports media analysis.' : 'Register as a certified operator for asset protection.' }}
+    </p>
 
     <!-- AUTH TABS -->
     <div class="auth-tabs">
@@ -47,15 +49,10 @@
         <input type="password" placeholder="••••••••••••">
       </div>
 
-      <div class="checkbox-row">
-        <div class="checkbox-group">
-          <input type="checkbox" id="keep-active">
-          <label for="keep-active">KEEP SECURE SESSION ACTIVE</label>
-        </div>
-      </div>
-
-      <button class="btn btn-success btn-full btn-pill">
-        {{ activeTab() === 'signin' ? 'ESTABLISH CONNECTION' : 'INITIALIZE ACCOUNT' }}
+      <button class="btn btn-success btn-full" (click)="login()">
+        <span *ngIf="activeTab() === 'signin'">ESTABLISH CONNECTION</span>
+        <span *ngIf="activeTab() === 'create'">INITIALIZE ACCOUNT</span>
+        <span class="btn-icon">→</span>
       </button>
 
       <div class="divider">
@@ -63,11 +60,8 @@
       </div>
 
       <div class="sso-grid">
-        <button class="btn btn-primary btn-pill btn-sm">GOOGLE ID</button>
-        <button class="btn btn-pill btn-sm" style="background:var(--white);">ENTERPRISE SSO</button>
+        <button class="btn btn-sm">GOOGLE ID</button>
       </div>
     </div>
   </main>
-
-  <!-- FOOTER INFO REMOVED -->
 </div>

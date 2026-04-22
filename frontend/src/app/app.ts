@@ -14,7 +14,7 @@ export class App implements OnInit {
   private readonly http = inject(HttpClient);
 
   ngOnInit() {
-    this.http.get<{ message: string }>('http://localhost:8000/').subscribe({
+    this.http.get<{ message: string }>('/api/').subscribe({
       next: (response) => this.message.set(response.message),
       error: (err) => {
         console.error('Error fetching from backend:', err);
