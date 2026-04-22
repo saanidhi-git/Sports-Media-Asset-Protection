@@ -134,10 +134,15 @@
         </section>
 
         <footer class="form-actions">
-          <button class="btn btn-secondary" (click)="cancel()">ABORT REGISTRATION</button>
-          <button class="btn btn-success" (click)="register()" [disabled]="!selectedFile() || !assetName">
-            ESTABLISH PROTECTION
-            <span class="btn-icon">→</span>
+          <div class="error-container" *ngIf="errorMessage()">
+            <span class="error-icon">⚠️</span>
+            <span class="error-text">{{ errorMessage() }}</span>
+          </div>
+          <button class="btn btn-secondary" (click)="cancel()" [disabled]="isSubmitting()">ABORT REGISTRATION</button>
+          <button class="btn btn-success" (click)="register()" [disabled]="!selectedFile() || !assetName || isSubmitting()">
+            {{ isSubmitting() ? 'PROTOCOL INITIATING...' : 'ESTABLISH PROTECTION' }}
+            <span class="btn-icon" *ngIf="!isSubmitting()">→</span>
+            <span class="loader-inline" *ngIf="isSubmitting()"></span>
           </button>
         </footer>
       </div>

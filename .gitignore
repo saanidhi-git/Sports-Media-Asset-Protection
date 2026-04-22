@@ -21,6 +21,13 @@ build/
 # Logs
 *.log
 
+# Uploads and Large Files
+backend/uploads/
+*.mp4
+*.mov
+*.avi
+*.wmv
+
 # OS
 .DS_Store
 Thumbs.db

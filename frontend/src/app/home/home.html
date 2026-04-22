@@ -56,18 +56,18 @@
     <section class="stats-grid">
       <div class="stat-card">
         <div class="stat-header">TOTAL ASSETS</div>
-        <div class="stat-value">1,284</div>
-        <div class="stat-footer">+12 since last rotation</div>
+        <div class="stat-value">{{ totalAssetsCount() }}</div>
+        <div class="stat-footer">+{{ totalAssetsCount() }} since registration</div>
       </div>
       <div class="stat-card">
         <div class="stat-header">THREATS NEUTRALIZED</div>
-        <div class="stat-value text-neon">42</div>
-        <div class="stat-footer">24H monitoring active</div>
+        <div class="stat-value text-neon">0</div>
+        <div class="stat-footer">Monitoring system active</div>
       </div>
       <div class="stat-card">
-        <div class="stat-header">STORAGE USED</div>
-        <div class="stat-value">84%</div>
-        <div class="stat-footer">782.4 TB / 1 PB</div>
+        <div class="stat-header">PROTECTION LEVEL</div>
+        <div class="stat-value">HIGH</div>
+        <div class="stat-footer">Encryption: AES-256</div>
       </div>
     </section>
 
@@ -90,18 +90,23 @@
           </div>
         </div>
 
-        <!-- PREVIOUS ASSETS -->
-        <div class="asset-sq-card" *ngFor="let asset of securedAssets">
+        <!-- REAL ASSETS -->
+        <div class="asset-sq-card" *ngFor="let asset of userAssets()">
           <div class="asset-sq-img">
-            <img [src]="asset.img" [alt]="asset.name">
+            <img [src]="getAssetImage(asset)" [alt]="asset.asset_name">
             <div class="asset-sq-overlay">
-              <span class="type-tag">{{ asset.type }}</span>
+              <span class="type-tag">{{ getAssetType(asset) }}</span>
             </div>
           </div>
           <div class="asset-sq-info">
-            <div class="asset-sq-name">{{ asset.name }}</div>
-            <div class="asset-sq-status">SECURED</div>
+            <div class="asset-sq-name">{{ asset.asset_name }}</div>
+            <div class="asset-sq-status">{{ asset.status }}</div>
           </div>
+        </div>
+        
+        <!-- Placeholder for when no assets exist -->
+        <div class="no-assets" *ngIf="userAssets().length === 0">
+           <p>No assets registered yet.</p>
         </div>
       </div>
     </section>
@@ -120,22 +125,25 @@
               <th>ID</th>
               <th>NAME</th>
               <th>STATUS</th>
-              <th>ENCRYPTION</th>
+              <th>CREATED AT</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let asset of assets">
-              <td class="id-cell">{{ asset.id }}</td>
-              <td class="name-cell">{{ asset.name }}</td>
+            <tr *ngFor="let asset of userAssets()">
+              <td class="id-cell">ASSET-{{ asset.id }}</td>
+              <td class="name-cell">{{ asset.asset_name }}</td>
               <td>
                 <span class="status-badge" [class]="asset.status.toLowerCase()">
                   {{ asset.status }}
                 </span>
               </td>
-              <td>{{ asset.encryption }}</td>
+              <td>{{ asset.created_at | date:'short' }}</td>
             </tr>
           </tbody>
         </table>
+        <div class="no-data-msg" *ngIf="userAssets().length === 0">
+          No activity logs available.
+        </div>
       </section>
 
       <!-- SYSTEM LOGS -->

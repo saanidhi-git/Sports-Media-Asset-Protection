@@ -30,9 +30,17 @@
 
     <!-- FORM SECTION -->
     <div class="form-body">
+      <div class="error-banner" *ngIf="errorMessage()">
+        {{ errorMessage() }}
+      </div>
+
+      <div class="success-banner" *ngIf="successMessage()">
+        {{ successMessage() }}
+      </div>
+
       <div class="form-row">
         <label>OPERATOR EMAIL / ID</label>
-        <input type="text" placeholder="OPERATOR@SHIELD.MEDIA">
+        <input type="text" [(ngModel)]="email" placeholder="OPERATOR@SHIELD.MEDIA">
       </div>
 
       <div class="form-row">
@@ -40,7 +48,7 @@
           <label>PASSWORD</label>
           <a href="#" class="forgot-link" *ngIf="activeTab() === 'signin'">FORGOT?</a>
         </div>
-        <input type="password" placeholder="••••••••••••">
+        <input type="password" [(ngModel)]="password" placeholder="••••••••••••">
       </div>
 
       <!-- CONFIRM PASSWORD FOR REGISTRATION -->
@@ -49,7 +57,7 @@
         <input type="password" placeholder="••••••••••••">
       </div>
 
-      <button class="btn btn-success btn-full" (click)="login()">
+      <button class="btn btn-success btn-full" (click)="submit()" [disabled]="!email || !password">
         <span *ngIf="activeTab() === 'signin'">ESTABLISH CONNECTION</span>
         <span *ngIf="activeTab() === 'create'">INITIALIZE ACCOUNT</span>
         <span class="btn-icon">→</span>

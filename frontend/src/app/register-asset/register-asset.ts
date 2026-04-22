@@ -1,7 +1,9 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { AssetService } from '../core/services/asset.service';
+import { AuthService } from '../core/services/auth.service';
 
 @Component({
   selector: 'app-register-asset',
@@ -10,8 +12,12 @@ import { Router, RouterLink } from '@angular/router';
   templateUrl: './register-asset.html',
   styleUrl: './register-asset.css'
 })
-export class RegisterAsset {
-  protected readonly operatorName = signal('JH-7492');
+export class RegisterAsset implements OnInit {
+  private readonly router = inject(Router);
+  private readonly assetService = inject(AssetService);
+  private readonly authService = inject(AuthService);
+
+  protected readonly operatorName = signal('JH-XXXX');
   protected readonly securityStatus = signal('OPTIMAL');
 
   protected assetName = '';
@@ -28,8 +34,16 @@ export class RegisterAsset {
   protected readonly scoreboardFile = signal<File | null>(null);
   protected readonly generatedFrames = signal<string[]>([]);
   protected readonly isProcessing = signal(false);
+  protected readonly isSubmitting = signal(false);
+  protected readonly errorMessage = signal<string | null>(null);
 
-  constructor(private router: Router) {}
+  ngOnInit() {
+    // Fetch real operator name
+    this.authService.getMe().subscribe({
+      next: (user) => this.operatorName.set(user.operator_id),
+      error: (err) => console.error('Failed to fetch profile', err)
+    });
+  }
 
   onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -68,15 +82,30 @@ export class RegisterAsset {
   }
 
   register() {
-    console.log('Registering Asset:', {
-      name: this.assetName,
-      owner: this.ownerCompany,
-      description: this.matchDescription,
-      file: this.selectedFile()?.name,
-      mediaToScrap: this.mediaToScrap
+    const file = this.selectedFile();
+    if (!file || !this.assetName) return;
+
+    this.isSubmitting.set(true);
+    this.errorMessage.set(null);
+
+    this.assetService.registerAsset({
+      assetName: this.assetName,
+      ownerCompany: this.ownerCompany,
+      matchDescription: this.matchDescription,
+      mediaToScrap: this.mediaToScrap,
+      selectedFile: file,
+      scoreboardFile: this.scoreboardFile()
+    }).subscribe({
+      next: (res) => {
+        console.log('Asset registered successfully', res);
+        this.router.navigate(['/home']);
+      },
+      error: (err) => {
+        console.error('Asset registration failed', err);
+        this.errorMessage.set(err.error?.detail || 'Failed to register asset. System protocol error.');
+        this.isSubmitting.set(false);
+      }
     });
-    // Implementation for backend registration
-    this.router.navigate(['/home']);
   }
 
   cancel() {

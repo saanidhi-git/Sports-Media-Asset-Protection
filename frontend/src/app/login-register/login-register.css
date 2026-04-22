@@ -118,6 +118,32 @@
   margin-bottom: 30px;
 }
 
+.error-banner {
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid var(--accent-red);
+  color: var(--accent-red);
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+.success-banner {
+  background: rgba(46, 204, 64, 0.1);
+  border: 1px solid var(--neon-green);
+  color: var(--neon-green);
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
 /* TABS */
 .auth-tabs {
   display: flex;

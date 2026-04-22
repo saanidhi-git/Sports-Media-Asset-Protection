@@ -1,0 +1,57 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+export interface AssetRegisterResponse {
+  status: string;
+  asset_id: number;
+  name: string;
+}
+
+export interface Asset {
+  id: number;
+  asset_name: string;
+  owner_company: string;
+  match_description: string;
+  media_file_path: string;
+  scoreboard_file_path: string | null;
+  scrap_youtube: boolean;
+  scrap_reddit: boolean;
+  scrap_instagram: boolean;
+  created_at: string;
+  status: string;
+  user_id: number;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AssetService {
+  private readonly http = inject(HttpClient);
+
+  registerAsset(data: {
+    assetName: string;
+    ownerCompany: string;
+    matchDescription: string;
+    mediaToScrap: any;
+    selectedFile: File;
+    scoreboardFile: File | null;
+  }): Observable<AssetRegisterResponse> {
+    const formData = new FormData();
+    formData.append('asset_name', data.assetName);
+    formData.append('owner_company', data.ownerCompany);
+    formData.append('match_description', data.matchDescription);
+    formData.append('media_to_scrap', JSON.stringify(data.mediaToScrap));
+    formData.append('selected_file', data.selectedFile);
+    
+    if (data.scoreboardFile) {
+      formData.append('scoreboard_file', data.scoreboardFile);
+    }
+
+    return this.http.post<AssetRegisterResponse>('/api/assets/register', formData);
+  }
+
+  getAssets(): Observable<Asset[]> {
+    return this.http.get<Asset[]>('/api/assets/');
+  }
+}

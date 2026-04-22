@@ -1,10 +1,15 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional, Any
 from pydantic import field_validator
+from urllib.parse import quote_plus
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "SHIELD_MEDIA"
     API_V1_STR: str = "/api/v1"
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    # 60 minutes * 24 hours * 8 days = 11520 minutes
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     
     # Database
     POSTGRES_SERVER: str = "localhost"
@@ -18,7 +23,13 @@ class Settings(BaseSettings):
     def assemble_db_connection(cls, v: Optional[str], info: Any) -> Any:
         if isinstance(v, str):
             return v
-        return f"postgresql://{info.data.get('POSTGRES_USER')}:{info.data.get('POSTGRES_PASSWORD')}@{info.data.get('POSTGRES_SERVER')}/{info.data.get('POSTGRES_DB')}"
+        
+        user = info.data.get('POSTGRES_USER')
+        password = quote_plus(str(info.data.get('POSTGRES_PASSWORD')))
+        server = info.data.get('POSTGRES_SERVER')
+        db = info.data.get('POSTGRES_DB')
+        
+        return f"postgresql://{user}:{password}@{server}/{db}"
 
     model_config = SettingsConfigDict(
         case_sensitive=True, 
