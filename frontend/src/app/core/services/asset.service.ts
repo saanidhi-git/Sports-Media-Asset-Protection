@@ -8,6 +8,19 @@ export interface AssetRegisterResponse {
   name: string;
 }
 
+export interface AssetFrame {
+  id: number;
+  frame_number: number;
+  file_path: string;
+}
+
+export interface PaginatedFrames {
+  frames: AssetFrame[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface Asset {
   id: number;
   asset_name: string;
@@ -18,6 +31,7 @@ export interface Asset {
   scrap_youtube: boolean;
   scrap_reddit: boolean;
   scrap_instagram: boolean;
+  total_frames: number;
   created_at: string;
   status: string;
   user_id: number;
@@ -34,6 +48,7 @@ export class AssetService {
     ownerCompany: string;
     matchDescription: string;
     mediaToScrap: any;
+    numFrames: number;
     selectedFile: File;
     scoreboardFile: File | null;
   }): Observable<AssetRegisterResponse> {
@@ -42,6 +57,7 @@ export class AssetService {
     formData.append('owner_company', data.ownerCompany);
     formData.append('match_description', data.matchDescription);
     formData.append('media_to_scrap', JSON.stringify(data.mediaToScrap));
+    formData.append('num_frames', data.numFrames.toString());
     formData.append('selected_file', data.selectedFile);
     
     if (data.scoreboardFile) {
@@ -53,5 +69,13 @@ export class AssetService {
 
   getAssets(): Observable<Asset[]> {
     return this.http.get<Asset[]>('/api/assets/');
+  }
+
+  getAsset(id: number): Observable<Asset> {
+    return this.http.get<Asset>(`/api/assets/${id}`);
+  }
+
+  getAssetFrames(id: number, page: number = 1, limit: number = 10): Observable<PaginatedFrames> {
+    return this.http.get<PaginatedFrames>(`/api/assets/${id}/frames?page=${page}&limit=${limit}`);
   }
 }

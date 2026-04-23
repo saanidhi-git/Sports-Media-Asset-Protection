@@ -66,3 +66,15 @@ The application follows a modular architecture:
 - `frontend/src/app/core`: Shared services, guards, and interceptors.
 - `frontend/src/app/home`: Dashboard and asset overview.
 - `frontend/src/app/register-asset`: Multi-step asset ingestion form.
+
+## Future Roadmap & Enhancements
+
+### [ENHANCE] Download-to-Stream Migration
+Currently, the system operates on a "Download-then-Scan" model where videos are fully downloaded to disk before processing. To optimize performance and reduce infrastructure costs, we plan to transition to a **Real-Time Stream Processing** model.
+
+**Architectural Plan:**
+- **On-the-Fly Extraction:** Utilize `yt-dlp` to extract direct stream URLs instead of downloading binary files.
+- **In-Memory Buffering:** Use `OpenCV` or `FFmpeg` to open remote stream headers directly into a memory buffer.
+- **Concurrent Fingerprinting:** Process `pHash` and `PDQ` vectors as frames arrive in the buffer.
+- **Early-Exit Logic:** Implement a threshold-based "Confidence Kill-Switch" that terminates the network connection as soon as a high-probability match (FLAG) is detected, potentially within the first 5-10 seconds of a video.
+- **Zero Disk Footprint:** Eliminate temporary video storage to significantly reduce I/O overhead and increase processing horizontal scalability.

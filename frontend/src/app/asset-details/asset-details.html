@@ -1,0 +1,151 @@
+<div class="dashboard-container">
+  <!-- SIDEBAR NAVIGATION -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-icon">🛡️</span>
+      <span class="brand-name">SHIELD_MEDIA</span>
+    </div>
+    
+    <nav class="nav-links">
+      <a routerLink="/home" class="nav-item">
+        <span class="icon">📊</span> DASHBOARD
+      </a>
+      <a routerLink="/register-asset" class="nav-item">
+        <span class="icon">➕</span> REGISTER ASSET
+      </a>
+      <a href="#" class="nav-item active">
+        <span class="icon">📦</span> ASSET VAULT
+      </a>
+      <a href="#" class="nav-item">
+        <span class="icon">📡</span> LIVE MONITOR
+      </a>
+      <a href="#" class="nav-item">
+        <span class="icon">🔐</span> SECURITY KEYS
+      </a>
+      <a href="#" class="nav-item">
+        <span class="icon">⚙️</span> SYSTEM CONFIG
+      </a>
+    </nav>
+
+    <div class="operator-profile">
+      <div class="avatar"></div>
+      <div class="info">
+        <div class="name">OP: {{ operatorName() }}</div>
+        <div class="status">STATUS: <span class="status-optimal">{{ securityStatus() }}</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="main-content" *ngIf="asset() as a">
+    <header class="top-header">
+      <div class="header-left">
+        <div class="breadcrumb">
+          <a routerLink="/home">DASHBOARD</a> / ASSET-{{ a.id }}
+        </div>
+        <h1>{{ a.asset_name }}</h1>
+        <p>Operational protection profile for {{ a.owner_company }}</p>
+      </div>
+      <div class="header-right" style="display: flex; gap: 15px; align-items: center;">
+        <button class="btn btn-primary" routerLink="/scan/new">
+          <span class="icon">📡</span> ADD OPERATION (SCAN)
+        </button>
+        <div class="status-badge" [class]="a.status.toLowerCase()">
+          {{ a.status }}
+        </div>
+      </div>
+    </header>
+
+    <div class="details-grid">
+      <!-- INFO CARD -->
+      <div class="info-card card">
+        <h3 class="card-title">METADATA TERMINAL</h3>
+        <div class="meta-row">
+          <span class="meta-label">IDENTIFIER:</span>
+          <span class="meta-value">ASSET-{{ a.id }}</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">OWNER:</span>
+          <span class="meta-value">{{ a.owner_company }}</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">PROTECTION:</span>
+          <span class="meta-value text-neon">ACTIVE (PHASH)</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">FRAMES:</span>
+          <span class="meta-value">{{ a.total_frames }} EXTRACTED</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">TIMESTAMP:</span>
+          <span class="meta-value">{{ a.created_at | date:'medium' }}</span>
+        </div>
+        
+        <div class="description-box mt-20">
+          <label>MATCH DESCRIPTION</label>
+          <p>{{ a.match_description || 'No description provided.' }}</p>
+        </div>
+      </div>
+
+      <!-- MONITORING STATUS -->
+      <div class="monitoring-card card">
+        <h3 class="card-title">SCRAPING PROTOCOLS</h3>
+        <div class="scrap-list">
+          <div class="scrap-item" [class.enabled]="a.scrap_youtube">
+            <span class="scrap-icon">🎥</span>
+            <span class="scrap-name">YOUTUBE</span>
+            <span class="scrap-toggle">{{ a.scrap_youtube ? 'ACTIVE' : 'INACTIVE' }}</span>
+          </div>
+          <div class="scrap-item" [class.enabled]="a.scrap_reddit">
+            <span class="scrap-icon">🤖</span>
+            <span class="scrap-name">REDDIT</span>
+            <span class="scrap-toggle">{{ a.scrap_reddit ? 'ACTIVE' : 'INACTIVE' }}</span>
+          </div>
+          <div class="scrap-item" [class.enabled]="a.scrap_instagram">
+            <span class="scrap-icon">📸</span>
+            <span class="scrap-name">INSTAGRAM</span>
+            <span class="scrap-toggle">{{ a.scrap_instagram ? 'ACTIVE' : 'INACTIVE' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FRAME VIEWER (ROBOFLOW STYLE) -->
+    <section class="frames-section card mt-20">
+      <div class="section-header">
+        <h3 class="card-title">ROBOFLOW FRAME DATASET</h3>
+        <div class="pagination-controls" *ngIf="framesData() as data">
+          <span class="page-info">SHOWING {{ (currentPage() - 1) * 10 + 1 }} - {{ (currentPage() * 10 > data.total ? data.total : currentPage() * 10) }} OF {{ data.total }}</span>
+          <div class="arrow-btns">
+            <button class="arrow-btn" (click)="prevPage()" [disabled]="currentPage() === 1">←</button>
+            <button class="arrow-btn" (click)="nextPage()" [disabled]="currentPage() * data.limit >= data.total">→</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="frames-grid" *ngIf="framesData() as data">
+        <div class="frame-card" *ngFor="let frame of data.frames">
+          <div class="frame-img-container">
+            <img [src]="getFrameUrl(frame.file_path)" alt="Frame {{ frame.frame_number }}">
+            <div class="frame-overlay">
+              <span>IDX: {{ frame.frame_number }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="no-frames" *ngIf="data.frames.length === 0">
+           <div class="loader" *ngIf="a.status === 'PROCESSING'"></div>
+           <p>{{ a.status === 'PROCESSING' ? 'PROCESSING ASSET... EXTRACTING DATA' : 'NO FRAMES EXTRACTED' }}</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- LOADING STATE -->
+  <main class="main-content flex-center" *ngIf="isLoading()">
+    <div class="terminal-loader">
+      <div class="loader-text">INITIALIZING TERMINAL...</div>
+      <div class="progress-bar"><div class="progress-fill"></div></div>
+    </div>
+  </main>
+</div>

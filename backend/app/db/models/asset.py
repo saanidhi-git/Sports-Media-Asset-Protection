@@ -24,10 +24,15 @@ class Asset(Base):
     scrap_reddit = Column(Boolean, default=False)
     scrap_instagram = Column(Boolean, default=False)
     
+    # Extraction settings
+    total_frames = Column(Integer, default=0)
+    audio_fp = Column(Text, nullable=True) # Audio fingerprint (using Text for longer length)
+    
     # Audit trail
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    status = Column(String, default="PENDING") # PENDING, PROCESSING, SECURED
+    status = Column(String, default="PENDING") # PENDING, PROCESSING, COMPLETED, FAILED
     
-    # Relationship: Many assets belong to one user
+    # Relationship
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     owner = relationship("User", back_populates="assets")
+    frames = relationship("AssetFrame", back_populates="asset", cascade="all, delete-orphan")

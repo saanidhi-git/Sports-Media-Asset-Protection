@@ -96,17 +96,10 @@
             </div>
           </div>
 
-          <div class="frames-preview-area" *ngIf="isProcessing() || generatedFrames().length > 0">
-            <label class="sub-label">AUTOMATIC FRAME GENERATION</label>
-            <div class="frames-scroll-container">
-              <div class="frame-placeholder" *ngIf="isProcessing()">
-                <div class="loader"></div>
-                <span>EXTRACTING KEYFRAMES...</span>
-              </div>
-              <div class="frame-item" *ngFor="let frame of generatedFrames()">
-                <img [src]="frame" alt="Asset Frame">
-              </div>
-            </div>
+          <div class="input-group mt-20">
+            <label>NUMBER OF FRAMES FOR ANALYSIS (e.g., 51, 89)</label>
+            <input type="number" [(ngModel)]="numFrames" placeholder="50" min="1" max="500">
+            <p class="input-hint">Specify exactly how many frames to extract for pHash protection.</p>
           </div>
         </section>
 

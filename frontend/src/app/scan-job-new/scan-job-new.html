@@ -1,0 +1,277 @@
+<div class="dashboard-container">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-icon">🛡️</span>
+      <span class="brand-name">SHIELD_MEDIA</span>
+    </div>
+    <nav class="nav-links">
+      <a routerLink="/home" class="nav-item">
+        <span class="icon">📊</span> DASHBOARD
+      </a>
+      <a routerLink="/register-asset" class="nav-item">
+        <span class="icon">➕</span> REGISTER ASSET
+      </a>
+      <a class="nav-item active">
+        <span class="icon">📡</span> SCAN OPERATION
+      </a>
+    </nav>
+    <div class="operator-profile">
+      <div class="avatar"></div>
+      <div class="info">
+        <div class="name">OP: {{ operatorName }}</div>
+        <div class="status">STATUS: <span class="status-optimal">{{ securityStatus }}</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--  PHASE 1: FORM                          -->
+  <!-- ═══════════════════════════════════════ -->
+  <main class="main-content" *ngIf="phase() === 'form'">
+    <header class="top-header">
+      <div class="header-left">
+        <div class="breadcrumb"><a routerLink="/home">DASHBOARD</a> / OPERATIONS / NEW_SCAN</div>
+        <h1>INITIALIZE SCAN OPERATION</h1>
+        <p>Deploy scraping nodes across platforms and match against your Asset Vault.</p>
+      </div>
+    </header>
+
+    <form [formGroup]="scanForm" (ngSubmit)="onSubmit()" class="scan-layout">
+      <!-- SEARCH QUERY -->
+      <div class="query-card card">
+        <h3 class="card-title">TARGET QUERY</h3>
+        <input type="text" formControlName="search_query"
+               placeholder="e.g. IPL 2026 highlights, Manchester Derby goals..."
+               class="cyber-input full-width">
+      </div>
+
+      <!-- PLATFORM CARDS -->
+      <div class="platforms-grid">
+
+        <!-- YOUTUBE -->
+        <div class="platform-card card" [class.disabled]="!scanForm.get('youtube_enabled')?.value">
+          <div class="platform-header-bar yt">
+            <span>🔴 YOUTUBE</span>
+            <label class="toggle-switch">
+              <input type="checkbox" formControlName="youtube_enabled">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="platform-body">
+            <label>Videos to scrape</label>
+            <input type="number" formControlName="youtube_limit" class="cyber-input" min="0" max="50"
+                   [attr.disabled]="!scanForm.get('youtube_enabled')?.value ? '' : null">
+            <small class="hint">YouTube Data API + yt-dlp</small>
+          </div>
+        </div>
+
+        <!-- INSTAGRAM -->
+        <div class="platform-card card" [class.disabled]="!scanForm.get('instagram_enabled')?.value">
+          <div class="platform-header-bar ig">
+            <span>📷 INSTAGRAM</span>
+            <label class="toggle-switch">
+              <input type="checkbox" formControlName="instagram_enabled">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="platform-body">
+            <label>Reels to scrape</label>
+            <input type="number" formControlName="instagram_limit" class="cyber-input" min="0" max="50"
+                   [attr.disabled]="!scanForm.get('instagram_enabled')?.value ? '' : null">
+            <small class="hint">Tavily Discovery + yt-dlp</small>
+          </div>
+        </div>
+
+        <!-- REDDIT -->
+        <div class="platform-card card" [class.disabled]="!scanForm.get('reddit_enabled')?.value">
+          <div class="platform-header-bar rd">
+            <span>🟠 REDDIT</span>
+            <label class="toggle-switch">
+              <input type="checkbox" formControlName="reddit_enabled">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="platform-body">
+            <label>Posts to scrape</label>
+            <input type="number" formControlName="reddit_limit" class="cyber-input" min="0" max="50"
+                   [attr.disabled]="!scanForm.get('reddit_enabled')?.value ? '' : null">
+            <small class="hint">Public JSON API + yt-dlp</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADVANCED -->
+      <div class="advanced-card card">
+        <h3 class="card-title">ANALYSIS SETTINGS</h3>
+        <div class="advanced-row">
+          <div class="form-group">
+            <label>FRAMES PER VIDEO</label>
+            <input type="number" formControlName="num_frames_per_video" class="cyber-input" min="1" max="100">
+            <small class="hint">Hashes extracted per suspect video for pHash + PDQ matching.</small>
+          </div>
+          <div class="form-group summary-box">
+            <label>OPERATION SUMMARY</label>
+            <div class="summary-value">{{ totalVideos }} videos across {{ anyPlatformEnabled ? '' : '0' }} platforms</div>
+            <div class="summary-value">{{ totalVideos * (scanForm.get('num_frames_per_video')?.value || 8) }} total hashes to compute</div>
+          </div>
+        </div>
+
+        <!-- GAME THEORY WARNING -->
+        <div class="math-warning" *ngIf="showOptimizationWarning">
+          <span class="warning-icon">⚠️</span>
+          <div class="warning-text">
+            <strong>GAME THEORY OPTIMIZATION ACTIVE</strong><br>
+            Requesting >40 frames triggers <span class="text-neon">Stratified Random Sampling (Minimax Strategy)</span>.
+            The pipeline selects 40 distributed frames to maximize pirate detection probability while minimizing cost.
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTIONS -->
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" routerLink="/home">CANCEL</button>
+        <button type="submit" class="btn btn-primary btn-lg"
+                [disabled]="scanForm.invalid || !anyPlatformEnabled">
+          EXECUTE SCAN ({{ totalVideos }} videos)
+        </button>
+      </div>
+    </form>
+  </main>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--  PHASE 2: PROCESSING                    -->
+  <!-- ═══════════════════════════════════════ -->
+  <main class="main-content" *ngIf="phase() === 'processing'">
+    <header class="top-header">
+      <div class="header-left">
+        <div class="breadcrumb"><a routerLink="/home">DASHBOARD</a> / SCAN / JOB-{{ currentJobId() }}</div>
+        <h1>SCAN IN PROGRESS</h1>
+        <p>Scraping, fingerprinting, and matching against your Asset Vault...</p>
+      </div>
+      <div class="header-right">
+        <div class="status-badge processing">{{ currentJob()?.status || 'PENDING' }}</div>
+      </div>
+    </header>
+
+    <div class="processing-layout">
+      <!-- PROGRESS CARD -->
+      <div class="card progress-card">
+        <h3 class="card-title">OPERATION STATUS</h3>
+        <div class="progress-visual">
+          <div class="spinner"></div>
+          <div class="progress-info">
+            <div class="progress-label">{{ currentJob()?.status || 'INITIALIZING' }}</div>
+            <div class="progress-sub">Job #{{ currentJobId() }} &mdash; {{ currentJob()?.search_query }}</div>
+            <div class="progress-platforms">
+              <span *ngFor="let p of currentJob()?.platforms || []" class="platform-tag">{{ getPlatformIcon(p) }} {{ p | uppercase }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIVE LOG -->
+      <div class="card log-card">
+        <h3 class="card-title">
+          OPERATION LOG
+          <span class="status-indicator">LIVE</span>
+        </h3>
+        <div class="log-box">
+          <div *ngFor="let line of processingLogs()" class="log-line">{{ line }}</div>
+          <div *ngIf="processingLogs().length === 0" class="log-line dim">Waiting for events...</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--  PHASE 3: RESULTS                       -->
+  <!-- ═══════════════════════════════════════ -->
+  <main class="main-content" *ngIf="phase() === 'results'">
+    <header class="top-header">
+      <div class="header-left">
+        <div class="breadcrumb"><a routerLink="/home">DASHBOARD</a> / SCAN / JOB-{{ currentJobId() }} / RESULTS</div>
+        <h1>SCAN RESULTS</h1>
+        <p>Detection verdicts for "{{ currentJob()?.search_query }}"</p>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-primary" (click)="goBack()">NEW SCAN</button>
+      </div>
+    </header>
+
+    <!-- STATS -->
+    <div class="stats-grid four-col">
+      <div class="stat-card">
+        <div class="stat-header">TOTAL SCANNED</div>
+        <div class="stat-value">{{ results().length }}</div>
+      </div>
+      <div class="stat-card flag-card">
+        <div class="stat-header">🚨 VIOLATIONS</div>
+        <div class="stat-value text-red">{{ flagCount }}</div>
+      </div>
+      <div class="stat-card review-card">
+        <div class="stat-header">⚠️ REVIEW</div>
+        <div class="stat-value text-yellow">{{ reviewCount }}</div>
+      </div>
+      <div class="stat-card clean-card">
+        <div class="stat-header">✅ CLEAN</div>
+        <div class="stat-value text-green">{{ cleanCount }}</div>
+      </div>
+    </div>
+
+    <!-- RESULTS LIST -->
+    <div class="results-list">
+      <div *ngFor="let r of results()" class="result-card card" [class.result-flag]="r.verdict === 'FLAG'" [class.result-review]="r.verdict === 'REVIEW'">
+
+        <div class="result-header">
+          <span class="platform-icon">{{ getPlatformIcon(r.platform) }}</span>
+          <span class="result-title">{{ r.video_title }}</span>
+          <span class="verdict-badge" [ngClass]="getVerdictClass(r.verdict)">{{ getVerdictLabel(r.verdict) }}</span>
+        </div>
+
+        <div class="result-meta">
+          <span class="meta-tag">{{ r.platform | uppercase }}</span>
+          <span class="meta-tag" *ngIf="r.matched_asset_name">MATCH: {{ r.matched_asset_name }}</span>
+          <a [href]="r.video_url" target="_blank" class="meta-link">OPEN SOURCE ↗</a>
+        </div>
+
+        <!-- EVIDENCE FRAMES -->
+        <div class="evidence-frames" *ngIf="r.frames && r.frames.length > 0">
+          <div class="frames-title">EVIDENCE FRAMES</div>
+          <div class="frames-grid">
+            <!-- Replace Windows backslashes with forward slashes and ensure it starts with / -->
+            <img *ngFor="let frame of r.frames.slice(0, 4)" [src]="'/' + frame.replace('\\\\', '/')" class="evidence-img">
+          </div>
+        </div>
+
+        <!-- SCORE BARS -->
+        <div class="score-section">
+          <div class="score-row">
+            <span class="score-label">pHash (w=0.20)</span>
+            <div class="score-bar-track"><div class="score-bar-fill phash" [style.width.%]="r.phash_score * 100"></div></div>
+            <span class="score-val">{{ r.phash_score.toFixed(3) }}</span>
+          </div>
+          <div class="score-row">
+            <span class="score-label">PDQ (w=0.30)</span>
+            <div class="score-bar-track"><div class="score-bar-fill pdq" [style.width.%]="r.pdq_score * 100"></div></div>
+            <span class="score-val">{{ r.pdq_score.toFixed(3) }}</span>
+          </div>
+          <div class="score-row">
+            <span class="score-label">Audio (w=0.50)</span>
+            <div class="score-bar-track"><div class="score-bar-fill audio" [style.width.%]="r.audio_score * 100"></div></div>
+            <span class="score-val">{{ r.audio_score.toFixed(3) }}</span>
+          </div>
+          <div class="score-row final">
+            <span class="score-label">FINAL SCORE</span>
+            <div class="score-bar-track"><div class="score-bar-fill final-bar" [style.width.%]="r.final_score * 100"></div></div>
+            <span class="score-val">{{ r.final_score.toFixed(3) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="results().length === 0" class="no-results card">
+        <p>No detection results found for this scan job. This may mean no videos were downloadable or no registered assets exist to compare against.</p>
+      </div>
+    </div>
+  </main>
+</div>

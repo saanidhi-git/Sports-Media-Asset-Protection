@@ -1,10 +1,33 @@
+"""
+Sports Guardian AI — FastAPI Application Entry Point
+"""
+import os
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import assets, scrape, pipeline, review, notice, login, users
+from app.core.job_logging import setup_job_logging
 
-app = FastAPI(title="SHIELD_MEDIA Backend API")
+# Initialize the custom thread-local job logger
+setup_job_logging()
+from fastapi.staticfiles import StaticFiles
 
-# Add CORS middleware
+from app.api.v1.router import router as api_v1_router
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(name)s — %(message)s",
+)
+
+app = FastAPI(
+    title="Sports Guardian AI",
+    description="Modular sports media protection API: Register assets, detect piracy, judge & act.",
+    version="6.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
+
+# ── CORS ────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:4200"],
@@ -13,15 +36,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include Routers directly (Frontend proxy will map /api/users -> /users)
-app.include_router(login.router)
-app.include_router(users.router)
-app.include_router(assets.router)
-app.include_router(scrape.router)
-app.include_router(pipeline.router)
-app.include_router(review.router)
-app.include_router(notice.router)
+# ── Static files (serve extracted frames to the frontend) ───────────────────
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
-@app.get("/")
-async def root():
-    return {"message": "SHIELD_MEDIA API Online"}
+# ── API v1 router ────────────────────────────────────────────────────────────
+app.include_router(api_v1_router)
+
+
+@app.get("/", tags=["Health"])
+def root():
+    return {"status": "ok", "service": "Sports Guardian AI v6.0"}
+
+
+@app.get("/health", tags=["Health"])
+def health():
+    return {"status": "healthy"}

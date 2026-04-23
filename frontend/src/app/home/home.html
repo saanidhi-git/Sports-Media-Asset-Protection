@@ -91,7 +91,7 @@
         </div>
 
         <!-- REAL ASSETS -->
-        <div class="asset-sq-card" *ngFor="let asset of userAssets()">
+        <div class="asset-sq-card" *ngFor="let asset of userAssets()" [routerLink]="['/asset', asset.id]">
           <div class="asset-sq-img">
             <img [src]="getAssetImage(asset)" [alt]="asset.asset_name">
             <div class="asset-sq-overlay">
@@ -100,7 +100,9 @@
           </div>
           <div class="asset-sq-info">
             <div class="asset-sq-name">{{ asset.asset_name }}</div>
-            <div class="asset-sq-status">{{ asset.status }}</div>
+            <div class="asset-sq-status">
+              {{ asset.status }} <span class="view-hint">| VIEW TERMINAL →</span>
+            </div>
           </div>
         </div>
         

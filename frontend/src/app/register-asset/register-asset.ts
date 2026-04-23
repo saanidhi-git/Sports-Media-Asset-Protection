@@ -23,6 +23,7 @@ export class RegisterAsset implements OnInit {
   protected assetName = '';
   protected ownerCompany = '';
   protected matchDescription = '';
+  protected numFrames = 50;
   
   protected mediaToScrap = {
     youtube: false,
@@ -50,7 +51,6 @@ export class RegisterAsset implements OnInit {
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
       this.selectedFile.set(file);
-      this.generateFrames();
     }
   }
 
@@ -60,21 +60,6 @@ export class RegisterAsset implements OnInit {
       const file = input.files[0];
       this.scoreboardFile.set(file);
     }
-  }
-
-  generateFrames() {
-    this.isProcessing.set(true);
-    // Simulate frame generation
-    setTimeout(() => {
-      const mockFrames = [
-        'https://placehold.co/150x100/141414/00f3ff?text=FRAME+1',
-        'https://placehold.co/150x100/141414/00f3ff?text=FRAME+2',
-        'https://placehold.co/150x100/141414/00f3ff?text=FRAME+3',
-        'https://placehold.co/150x100/141414/00f3ff?text=FRAME+4',
-      ];
-      this.generatedFrames.set(mockFrames);
-      this.isProcessing.set(false);
-    }, 1500);
   }
 
   toggleScrapMedia(type: 'youtube' | 'reddit' | 'instagram') {
@@ -93,6 +78,7 @@ export class RegisterAsset implements OnInit {
       ownerCompany: this.ownerCompany,
       matchDescription: this.matchDescription,
       mediaToScrap: this.mediaToScrap,
+      numFrames: this.numFrames,
       selectedFile: file,
       scoreboardFile: this.scoreboardFile()
     }).subscribe({
