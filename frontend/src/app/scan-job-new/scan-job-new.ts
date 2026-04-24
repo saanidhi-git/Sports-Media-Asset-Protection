@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../core/services/auth.service';
@@ -44,6 +44,7 @@ export class ScanJobNew implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
 
   phase = signal<Phase>('form');
   scanForm!: FormGroup;
@@ -75,6 +76,34 @@ export class ScanJobNew implements OnInit, OnDestroy {
       reddit_enabled: [false],
       reddit_limit: [2, [Validators.min(0), Validators.max(50)]],
       num_frames_per_video: [8, [Validators.required, Validators.min(1), Validators.max(100)]]
+    });
+
+    // Check for jobId in query params
+    this.route.queryParams.subscribe(params => {
+      const jobId = params['jobId'];
+      if (jobId) {
+        this.loadExistingJob(Number(jobId));
+      }
+    });
+  }
+
+  loadExistingJob(jobId: number) {
+    this.currentJobId.set(jobId);
+    this.phase.set('processing');
+    this.http.get<ScanJob>(`/api/pipeline/jobs/${jobId}`).subscribe({
+      next: (job) => {
+        this.currentJob.set(job);
+        if (job.status === 'COMPLETED') {
+          this.fetchResults(jobId);
+        } else if (job.status === 'FAILED') {
+          this.addLog(`JOB FAILED`);
+        } else {
+          this.startPolling(jobId);
+        }
+      },
+      error: (err) => {
+        this.addLog(`ERROR LOADING JOB: ${err.message}`);
+      }
     });
   }
 

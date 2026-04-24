@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     YOUTUBE_API_KEY: str
     TAVILY_API_KEY: str
 
+    # Streaming Configuration
+    STREAM_MODE: bool = True
+    EARLY_EXIT_THRESHOLD: float = 0.80
+    AUDIO_SEGMENT_DURATION: int = 60
+    STREAM_OPEN_TIMEOUT_MS: int = 15_000
+    STREAM_READ_TIMEOUT_MS: int = 10_000
+
     @field_validator("SQLALCHEMY_DATABASE_URI", mode="before")
     @classmethod
     def assemble_db_connection(cls, v: Optional[str], info: Any) -> Any:

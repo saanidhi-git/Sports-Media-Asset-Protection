@@ -3,26 +3,34 @@ Shared utilities used by all scraper modules.
 Scrapers only import from here — never cross-import each other.
 """
 import cv2
+import glob as _glob
+import gc
 import logging
 import subprocess
 import tempfile
 from pathlib import Path
 import random
 from typing import Optional
+import os
+import shutil
 
+from app.core.config import settings
 from app.services.fingerprint.generator import get_audio_fp, get_pdq, get_phash
 
 logger = logging.getLogger(__name__)
 
+class ScrapingError(Exception):
+    """Base class for scraping-related errors."""
+    pass
 
-import os
+class VideoTooLongError(ScrapingError):
+    """Raised when a video exceeds the maximum allowed duration."""
+    pass
+
 def fingerprint_video_file(video_path: str, num_frames: int = 8, save_frames_dir: str = None) -> dict:
     """
     Opens a video, extracts `num_frames` frames.
-    If num_frames > 40, applies Game Theory optimal sampling (Stratified Random Sampling)
-    to minimize computational cost while maximizing the probability of catching short pirate clips.
-    Always releases the cv2 cap even on error.
-    Returns: {phashes, pdq_hashes, audio_fp}
+    Returns: {phashes, pdq_hashes, audio_fp, frame_paths}
     """
     phashes: list[str]    = []
     pdq_hashes: list[str] = []
@@ -35,20 +43,12 @@ def fingerprint_video_file(video_path: str, num_frames: int = 8, save_frames_dir
     try:
         total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         if total <= 0:
-            return {"phashes": phashes, "pdq_hashes": pdq_hashes, "audio_fp": None}
+            return {"phashes": phashes, "pdq_hashes": pdq_hashes, "audio_fp": None, "frame_paths": []}
             
         n = min(num_frames, total)
         
-        # --- MATHEMATICAL OPTIMIZATION (GAME THEORY) ---
-        # If a user requests > 40 frames, analyzing all of them is computationally expensive.
-        # From a Minimax perspective, the "Pirate" wants to hide a small clip.
-        # If we use uniform deterministic sampling, the pirate can predict our intervals.
-        # If we use purely random sampling, we might get clusters of frames and leave large gaps.
-        # The optimal strategy is "Stratified Random Sampling" capped at a computational bound (e.g., 40).
-        # We divide the video into 40 strata and pick a random frame within each stratum.
-        # This guarantees maximum coverage distance while maintaining unpredictability.
+        # --- STRATIFIED SAMPLING ---
         if n > 40:
-            logger.info(f"Applying Game Theory optimal sampling. Reducing {n} frames to 40 stratified random frames.")
             n = 40
             strata_size = total // n
             frame_indices = [
@@ -60,8 +60,6 @@ def fingerprint_video_file(video_path: str, num_frames: int = 8, save_frames_dir
             frame_indices = [i * step for i in range(n)]
 
         for idx in frame_indices:
-            if idx >= total:
-                break
             cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
             ret, frame = cap.read()
             if not ret:
@@ -74,10 +72,9 @@ def fingerprint_video_file(video_path: str, num_frames: int = 8, save_frames_dir
                 pdq_hashes.append(pd)
                 
             if save_frames_dir:
-                # Save frame image
                 frame_path = os.path.join(save_frames_dir, f"frame_{idx:05d}.jpg")
                 cv2.imwrite(frame_path, frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
-                frame_paths.append(frame_path)
+                frame_paths.append(frame_path.replace("\\", "/"))
     except Exception as e:
         logger.warning(f"fingerprint_video_file: {e}")
     finally:
@@ -90,32 +87,165 @@ def fingerprint_video_file(video_path: str, num_frames: int = 8, save_frames_dir
         "frame_paths": frame_paths,
     }
 
+def run_ytdlp(url: str, output_path: str, timeout: int = 300, download_sections: Optional[str] = None) -> bool:
+    """Downloads a video from `url` to `output_path` via yt-dlp."""
+    try:
+        cmd = [
+            "yt-dlp", "--no-warnings", "--quiet",
+            "--extractor-args", "youtube:player_client=android,web_creator",
+            "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+            "-o", output_path, "--no-playlist"
+        ]
+        if download_sections:
+            cmd.extend(["--download-sections", download_sections])
+        cmd.append(url)
+        
+        subprocess.run(
+            cmd, check=True, timeout=timeout, capture_output=True,
+            text=True, encoding="utf-8", errors="replace",
+        )
+        return Path(output_path).exists()
+    except Exception as e:
+        logger.warning(f"run_ytdlp failed for {url}: {e}")
+    return False
 
-def run_ytdlp(url: str, output_path: str, timeout: int = 300) -> bool:
+def get_stream_url(url: str, timeout: int = 30) -> str | None:
+    """Extracts direct CDN stream URL."""
+    try:
+        result = subprocess.run(
+            [
+                "yt-dlp", "--no-warnings", "--quiet",
+                "--extractor-args", "youtube:player_client=android,web_creator",
+                "-f", "bestvideo[ext=mp4]/bestvideo/best[ext=mp4]/best",
+                "--get-url", "--no-playlist", url,
+            ],
+            capture_output=True, text=True, timeout=timeout,
+            encoding="utf-8", errors="replace",
+        )
+        stream_url = result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
+        if stream_url.startswith("http"):
+            return stream_url
+    except Exception as e:
+        logger.warning(f"get_stream_url error for {url}: {e}")
+    return None
+
+def _probe_duration(url: str, timeout: int = 30) -> float | None:
+    """Return video duration in seconds via yt-dlp."""
+    try:
+        res = subprocess.run(
+            [
+                "yt-dlp", "--no-warnings", "--quiet",
+                "--extractor-args", "youtube:player_client=android,web_creator",
+                "--print", "duration", "--no-playlist", url,
+            ],
+            capture_output=True, text=True, timeout=timeout,
+            encoding="utf-8", errors="replace",
+        )
+        raw = res.stdout.strip()
+        if raw and raw.replace(".", "", 1).isdigit():
+            return float(raw)
+    except Exception as e:
+        logger.warning(f"_probe_duration failed for {url}: {e}")
+    return None
+
+def fingerprint_video_stream(
+    url: str,
+    stream_url: str,
+    num_frames: int = 8,
+    save_frames_dir: str | None = None,
+    early_exit_score_fn=None,
+) -> dict:
     """
-    Downloads a video from `url` to `output_path` via yt-dlp.
-    Returns True on success, False on any failure.
+    Pure Streaming: Seeks directly to timestamps in the network stream.
     """
+    phashes:     list[str] = []
+    pdq_hashes:  list[str] = []
+    frame_paths: list[str] = []
+    early_exit   = False
+
+    if save_frames_dir:
+        os.makedirs(save_frames_dir, exist_ok=True)
+
+    duration = _probe_duration(url)
+    if not duration or duration <= 0:
+        duration = 300.0 # Fallback 5m
+
+    # Spread timestamps evenly across duration
+    timestamps_ms = [int(duration * (i / max(1, num_frames - 1)) * 1000) for i in range(num_frames)]
+    max_ms = int((duration - 1.0) * 1000)
+    timestamps_ms = [min(max_ms, max(0, ts)) for ts in timestamps_ms]
+
+    logger.info(f"   📐 Streaming {num_frames} frames across {duration:.1f}s match...")
+
+    cap = cv2.VideoCapture(stream_url)
+    cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, settings.STREAM_OPEN_TIMEOUT_MS)
+    cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, settings.STREAM_READ_TIMEOUT_MS)
+
+    try:
+        for idx, ts_ms in enumerate(timestamps_ms):
+            cap.set(cv2.CAP_PROP_POS_MSEC, ts_ms)
+            ret, frame = cap.read()
+            if not ret:
+                continue
+
+            ph = get_phash(frame)
+            pd = get_pdq(frame)
+            if ph:
+                phashes.append(ph)
+            if pd:
+                pdq_hashes.append(pd)
+
+            if save_frames_dir:
+                frame_path = os.path.join(save_frames_dir, f"frame_{idx:05d}.jpg")
+                cv2.imwrite(frame_path, frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+                frame_paths.append(frame_path.replace("\\", "/"))
+                
+            del frame
+            gc.collect()
+
+            if early_exit_score_fn and len(phashes) >= 3:
+                rolling_score = early_exit_score_fn(phashes, pdq_hashes)
+                if rolling_score >= settings.EARLY_EXIT_THRESHOLD:
+                    logger.info(f"🛑 Early-exit triggered at {rolling_score:.3f}")
+                    early_exit = True
+                    break
+    except Exception as e:
+        logger.warning(f"fingerprint_video_stream error: {e}")
+    finally:
+        cap.release()
+
+    return {
+        "phashes":     phashes,
+        "pdq_hashes":  pdq_hashes,
+        "audio_fp":    None,
+        "frame_paths": frame_paths,
+        "early_exit":  early_exit,
+    }
+
+def get_audio_fp_from_stream(url: str, duration_sec: int = settings.AUDIO_SEGMENT_DURATION) -> str | None:
+    """Downloads a short audio segment for fingerprinting."""
+    if shutil.which("fpcalc") is None:
+        return None
+
+    tmp_dir = tempfile.mkdtemp(prefix="sgai_audio_")
+    output_template = os.path.join(tmp_dir, "audio.%(ext)s")
+
     try:
         subprocess.run(
             [
                 "yt-dlp", "--no-warnings", "--quiet",
-                "--extractor-args", "youtube:player_client=android,web_creator",
-                "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-                "-o", output_path, "--no-playlist", url,
+                "-f", "bestaudio", "--extract-audio", "--audio-format", "m4a",
+                "--download-sections", f"*0-{duration_sec}",
+                "-o", output_template, "--no-playlist", url,
             ],
-            check=True,
-            timeout=timeout,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
+            timeout=120, check=True, capture_output=True, text=True,
+            encoding="utf-8", errors="replace",
         )
-        return Path(output_path).exists()
-    except subprocess.CalledProcessError as e:
-        logger.warning(f"yt-dlp CalledProcessError for {url}: {e.stderr[:200]}")
-    except subprocess.TimeoutExpired:
-        logger.warning(f"yt-dlp timeout for {url}")
+        candidates = _glob.glob(os.path.join(tmp_dir, "audio.*"))
+        if candidates and os.path.getsize(candidates[0]) > 0:
+            return get_audio_fp(candidates[0])
     except Exception as e:
-        logger.warning(f"yt-dlp unexpected error for {url}: {e}")
-    return False
+        logger.warning(f"get_audio_fp_from_stream failed: {e}")
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+    return None

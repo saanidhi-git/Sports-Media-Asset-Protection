@@ -1,0 +1,104 @@
+<div class="dashboard-container">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-icon">🛡️</span>
+      <span class="brand-name">SHIELD_MEDIA</span>
+    </div>
+    <nav class="nav-links">
+      <a routerLink="/home" class="nav-item">
+        <span class="icon">📊</span> DASHBOARD
+      </a>
+      <a routerLink="/register-asset" class="nav-item">
+        <span class="icon">📦</span> ASSET VAULT
+      </a>
+      <a routerLink="/scan/new" class="nav-item">
+        <span class="icon">📡</span> NEW SCAN
+      </a>
+      <a routerLink="/scan/history" class="nav-item active">
+        <span class="icon">📜</span> SCAN HISTORY
+      </a>
+    </nav>
+    <div class="operator-profile">
+      <div class="avatar"></div>
+      <div class="info">
+        <div class="name">OP: {{ operatorName }}</div>
+        <div class="status">STATUS: <span class="status-optimal">{{ securityStatus }}</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <header class="top-header">
+      <div class="header-left">
+        <div class="breadcrumb"><a routerLink="/home">DASHBOARD</a> / OPERATIONS / HISTORY</div>
+        <h1>SCAN OPERATIONS LOG</h1>
+        <p>Complete record of all scraping and matching tasks executed by your node.</p>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-primary" routerLink="/scan/new">INITIALIZE NEW SCAN</button>
+      </div>
+    </header>
+
+    <!-- LOADING STATE -->
+    <div class="loading-overlay" *ngIf="loading()">
+      <div class="spinner"></div>
+      <p>Retrieving operational logs...</p>
+    </div>
+
+    <!-- JOBS LIST -->
+    <div class="jobs-list-container" *ngIf="!loading()">
+      <div class="card jobs-card">
+        <table class="cyber-table">
+          <thead>
+            <tr>
+              <th>JOB ID</th>
+              <th>QUERY</th>
+              <th>PLATFORMS</th>
+              <th>STATUS</th>
+              <th>INITIATED</th>
+              <th>DURATION</th>
+              <th>ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let job of jobs()">
+              <td class="id-cell">#{{ job.id }}</td>
+              <td class="query-cell">{{ job.search_query }}</td>
+              <td>
+                <div class="platform-icons">
+                  <span *ngFor="let p of job.platforms" [title]="p" class="p-icon">
+                    {{ getPlatformIcon(p) }}
+                  </span>
+                </div>
+              </td>
+              <td>
+                <span class="status-badge" [ngClass]="getStatusClass(job.status)">
+                  {{ job.status }}
+                </span>
+              </td>
+              <td class="time-cell">{{ job.created_at | date:'MMM d, HH:mm' }}</td>
+              <td class="time-cell">
+                <span *ngIf="job.completed_at">
+                  {{ job.completed_at | date:'shortTime' }}
+                </span>
+                <span *ngIf="!job.completed_at" class="dim">---</span>
+              </td>
+              <td>
+                <button class="btn-text" [routerLink]="['/scan/new']" [queryParams]="{ jobId: job.id }">
+                   VIEW TERMINAL →
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- NO DATA -->
+        <div class="no-data-msg" *ngIf="jobs().length === 0">
+           <p>No operational logs found. Execute your first scan to begin monitoring.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

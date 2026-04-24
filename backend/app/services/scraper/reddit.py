@@ -7,7 +7,14 @@ from pathlib import Path
 import requests
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from app.services.scraper.base import fingerprint_video_file, run_ytdlp
+from app.core.config import settings
+from app.services.scraper.base import (
+    fingerprint_video_file, 
+    run_ytdlp,
+    get_stream_url,
+    fingerprint_video_stream,
+    get_audio_fp_from_stream,
+)
 
 logger  = logging.getLogger(__name__)
 _SESSION = requests.Session()
@@ -45,10 +52,10 @@ def _search_page(query: str, after: str | None) -> dict:
     return resp.json()
 
 
-def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8) -> list[dict]:
+def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_exit_score_fn=None) -> list[dict]:
     """
-    Page through Reddit search, collect video posts up to `limit`, download
-    each into a persistent dir, fingerprint, and return result dicts.
+    Page through Reddit search, collect video posts up to `limit`, chunk-download
+    or full-download each, fingerprint, and return result dicts.
     """
     posts: list[dict] = []
     after: str | None = None
@@ -82,31 +89,55 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8) -> list[
         permalink = f"https://reddit.com{post.get('permalink', '')}"
         post_url  = post.get("url", "")
 
-        # Use persistent directory
         base_dir = Path("uploads/scraped/reddit") / post_id
         base_dir.mkdir(parents=True, exist_ok=True)
         
-        video_path = str(base_dir / f"{post_id}.mp4")
         frames_dir = str(base_dir / "frames")
 
-        logger.info(f"   ⬇ [1/4] Downloading Reddit: {post_id}...")
-        downloaded = any(
-            run_ytdlp(u, video_path)
-            for u in [permalink, post_url] if u
-        )
-        if not downloaded:
-            logger.warning(f"   ❌ Reddit: could not download {post_id}")
-            continue
+        if settings.STREAM_MODE:
+            # ── Pure Streaming ──
+            # Try the post URL first (direct video link), fall back to permalink
+            target_url = post_url if post_url else permalink
+            logger.info(f"   📥 [1/2] Streaming Reddit video {post_id} …")
+            
+            stream_url = get_stream_url(target_url)
+            if not stream_url and target_url != permalink:
+                logger.info(f"   🔄 Retrying get_stream_url with permalink for {post_id} …")
+                target_url = permalink
+                stream_url = get_stream_url(target_url)
 
-        # Pass save_frames_dir so base.py saves the frames to disk
-        logger.info(f"   🎞 [2/4] Extracting {num_frames} frames & fingerprinting...")
-        fp = fingerprint_video_file(video_path, num_frames=num_frames, save_frames_dir=frames_dir)
-        
-        # Cleanup video to save space, but keep frames
-        try:
-            Path(video_path).unlink(missing_ok=True)
-        except Exception:
-            pass
+            if stream_url:
+                fp = fingerprint_video_stream(
+                    url=target_url,
+                    stream_url=stream_url,
+                    num_frames=num_frames,
+                    save_frames_dir=frames_dir,
+                    early_exit_score_fn=early_exit_score_fn,
+                )
+                fp["audio_fp"] = get_audio_fp_from_stream(target_url)
+            else:
+                logger.warning(f"   ❌ Could not get stream URL for Reddit video {post_id}")
+                fp = {"phashes": [], "pdq_hashes": [], "audio_fp": None, "frame_paths": [], "early_exit": False}
+
+        else:
+            video_path = str(base_dir / f"{post_id}.mp4")
+            logger.info(f"   ⬇ [1/4] Downloading Reddit: {post_id}...")
+            
+            downloaded = any(
+                run_ytdlp(u, video_path)
+                for u in [permalink, post_url] if u
+            )
+            if not downloaded:
+                logger.warning(f"   ❌ Reddit: could not download {post_id}")
+                continue
+
+            logger.info(f"   🎞 [2/4] Extracting {num_frames} frames & fingerprinting...")
+            fp = fingerprint_video_file(video_path, num_frames=num_frames, save_frames_dir=frames_dir)
+            
+            try:
+                Path(video_path).unlink(missing_ok=True)
+            except Exception:
+                pass
 
         results.append({
             "platform":          "reddit",
@@ -116,6 +147,11 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8) -> list[
             "subreddit":         post.get("subreddit", ""),
             **fp,
         })
-        logger.info(f"   ✅ Reddit ✓ {title[:40]} — {len(fp['phashes'])} pHashes")
+        logger.info(
+            f"   ✅ Reddit ✓ {title[:40]} — "
+            f"{len(fp.get('phashes', []))} pHashes, "
+            f"{len(fp.get('pdq_hashes', []))} PDQ, "
+            f"audio={'yes' if fp.get('audio_fp') else 'no'}"
+        )
 
     return results

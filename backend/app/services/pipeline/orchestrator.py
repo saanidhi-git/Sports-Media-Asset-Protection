@@ -23,6 +23,32 @@ from app.services.scoring.engine import (
 
 logger = logging.getLogger(__name__)
 
+def _make_score_fn():
+    """
+    Returns a closure that computes a rolling piracy similarity score against
+    all COMPLETED assets in the DB. Used as the early_exit_score_fn callback.
+    """
+    from app.db.session import SessionLocal
+    from app.db.models.asset import Asset
+    from app.services.scoring.engine import phash_similarity, pdq_similarity
+
+    def score_fn(phashes: list[str], pdq_hashes: list[str]) -> float:
+        db = SessionLocal()
+        best = 0.0
+        try:
+            for asset in db.query(Asset).filter(Asset.status == "COMPLETED").yield_per(100):
+                ref_ph  = [f.phash_value for f in asset.frames if f.phash_value]
+                ref_pdq = [f.pdq_hash   for f in asset.frames if f.pdq_hash]
+                p   = phash_similarity(phashes, ref_ph)
+                pdq = pdq_similarity(pdq_hashes, ref_pdq)
+                combined = (p * 0.5) + (pdq * 0.5)
+                if combined > best:
+                    best = combined
+        finally:
+            db.close()
+        return best
+
+    return score_fn
 
 def _match_against_assets(
     db: Session,
@@ -139,6 +165,7 @@ def run_pipeline_job(
                     job.search_query,
                     limit=limit,
                     num_frames=num_frames_per_video,
+                    early_exit_score_fn=_make_score_fn(),
                 )
             except Exception as e:
                 logger.error(f"❌ Scraper {platform} failed: {e}", exc_info=True)

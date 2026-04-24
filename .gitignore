@@ -20,6 +20,10 @@ build/
 
 # Logs
 *.log
+backend/job_logs/
+
+# Database
+backend/sports_guardian.db
 
 # Uploads and Large Files
 backend/uploads/

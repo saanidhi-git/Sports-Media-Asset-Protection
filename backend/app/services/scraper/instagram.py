@@ -1,4 +1,4 @@
-"""Instagram scraper — uses Tavily to discover reel URLs, yt-dlp to download."""
+"""Instagram scraper — uses Tavily to discover reel URLs, yt-dlp to stream or download."""
 import logging
 import tempfile
 from pathlib import Path
@@ -6,7 +6,13 @@ from pathlib import Path
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
-from app.services.scraper.base import fingerprint_video_file, run_ytdlp
+from app.services.scraper.base import (
+    fingerprint_video_file, 
+    run_ytdlp,
+    get_stream_url,
+    fingerprint_video_stream,
+    get_audio_fp_from_stream,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +36,10 @@ def _tavily_search(query: str) -> list[dict]:
     return response.get("results", [])
 
 
-def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8) -> list[dict]:
+def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_exit_score_fn=None) -> list[dict]:
     """
-    Discover Instagram reel URLs via Tavily, download via yt-dlp into a
-    persistent dir, fingerprint, and return result dicts.
+    Discover Instagram reel URLs via Tavily, chunk-download or full-download via yt-dlp,
+    fingerprint, and return result dicts.
     """
     try:
         raw = _tavily_search(query)
@@ -55,27 +61,38 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8) -> list[
     for url in reel_urls:
         video_id = url.rstrip("/").split("/")[-1]
         
-        # Use persistent directory
         base_dir = Path("uploads/scraped/instagram") / video_id
         base_dir.mkdir(parents=True, exist_ok=True)
         
-        video_path = str(base_dir / f"{video_id}.mp4")
         frames_dir = str(base_dir / "frames")
 
-        logger.info(f"   ⬇ [1/4] Downloading Instagram: {video_id}...")
-        if not run_ytdlp(url, video_path):
-            logger.error(f"   ❌ Instagram download failed for {video_id}")
-            continue
+        if settings.STREAM_MODE:
+            # ── Pure Streaming ──
+            logger.info(f"   📥 [1/2] Streaming Instagram reel {video_id} …")
+            stream_url = get_stream_url(url)
+            fp = fingerprint_video_stream(
+                url=url,
+                stream_url=stream_url,
+                num_frames=num_frames,
+                save_frames_dir=frames_dir,
+                early_exit_score_fn=early_exit_score_fn,
+            )
+            fp["audio_fp"] = get_audio_fp_from_stream(url)
 
-        # Pass save_frames_dir so base.py saves the frames to disk
-        logger.info(f"   🎞 [2/4] Extracting {num_frames} frames & fingerprinting...")
-        fp = fingerprint_video_file(video_path, num_frames=num_frames, save_frames_dir=frames_dir)
-        
-        # Cleanup video to save space, but keep frames
-        try:
-            Path(video_path).unlink(missing_ok=True)
-        except Exception:
-            pass
+        else:
+            video_path = str(base_dir / f"{video_id}.mp4")
+            logger.info(f"   ⬇ [1/4] Downloading Instagram: {video_id}...")
+            if not run_ytdlp(url, video_path):
+                logger.error(f"   ❌ Instagram download failed for {video_id}")
+                continue
+
+            logger.info(f"   🎞 [2/4] Extracting {num_frames} frames & fingerprinting...")
+            fp = fingerprint_video_file(video_path, num_frames=num_frames, save_frames_dir=frames_dir)
+            
+            try:
+                Path(video_path).unlink(missing_ok=True)
+            except Exception:
+                pass
 
         results.append({
             "platform":          "instagram",
@@ -84,6 +101,11 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8) -> list[
             "url":               url,
             **fp,
         })
-        logger.info(f"   ✅ Instagram ✓ {video_id} — {len(fp['phashes'])} pHashes")
+        logger.info(
+            f"   ✅ Instagram ✓ {video_id} — "
+            f"{len(fp.get('phashes', []))} pHashes, "
+            f"{len(fp.get('pdq_hashes', []))} PDQ, "
+            f"audio={'yes' if fp.get('audio_fp') else 'no'}"
+        )
 
     return results

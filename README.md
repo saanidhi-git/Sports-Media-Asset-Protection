@@ -1,80 +1,113 @@
-# SHIELD_MEDIA: Sports Media Asset Protection
+# 🛡️ SHIELD_MEDIA: Advanced Sports Media Asset Protection
 
-A comprehensive system for registering and protecting sports media assets using advanced monitoring and anti-piracy protocols.
+**SHIELD_MEDIA** is a high-performance, anti-piracy ecosystem designed for sports media rights holders. It provides a "Mission Control" interface to register protected assets, deploy scraping nodes across social platforms, and identify copyright infringements using multi-modal fingerprinting (Visual & Audio).
 
-## Project Overview
+---
 
-SHIELD_MEDIA provides a secure vault and monitoring service for sports media rights holders. The platform allows users to:
-- **Register Assets:** Securely upload media assets with metadata and automated frame extraction.
-- **Automated Monitoring:** Configure scraping protocols for platforms like YouTube, Reddit, and Instagram.
-- **Real-time Dashboard:** Monitor asset status, security levels, and system logs.
-- **Identity Management:** Secure operator login and registration with JWT-based authentication.
+## 🚀 Core Features
 
-## Technical Stack
+### 1. Asset Vault (Digital Fingerprinting)
+- **Ingestion:** Upload high-value sports media (clips, match highlights).
+- **pHash & PDQ Vectors:** Generates perceptual hashes using `imagehash` and `pdqhash` for visual matching that is resistant to resizing, compression, and slight modifications.
+- **Automated Frame Extraction:** Uses `OpenCV` to extract critical frames for high-fidelity comparison.
 
-### Backend
-- **Framework:** FastAPI (Python 3.12)
-- **Database:** PostgreSQL with SQLAlchemy ORM
-- **Migrations:** Alembic
-- **Dependency Management:** UV
-- **Authentication:** OAuth2 with JWT tokens and Bcrypt password hashing
-- **File Storage:** Local upload management with unique UUID mapping
+### 2. Scanning Operations (The Pipeline)
+- **Multi-Platform Scraping:** Integrates `yt-dlp`, `Google YouTube Data API`, and `Tavily Discovery` to find suspect videos on YouTube, Instagram, and Reddit.
+- **Intelligent Discovery:** Target query-based searches (e.g., "IPL 2026 live stream", "Real Madrid vs Barca goals").
+- **Live Terminal Tracking:** Real-time feedback of the scraping and analysis progress via background tasks.
 
-### Frontend
-- **Framework:** Angular 19
-- **State Management:** Angular Signals
-- **Styling:** Vanilla CSS with a modern "Mission Control" aesthetic (Neon-themed)
-- **Security:** Functional Auth Guards and HTTP Interceptors for token management
+### 3. Verdict Engine (AI Moderation)
+- **Scoring System:** Calculates a "Final Threat Score" based on pHash similarity, PDQ geometry matching, and audio fingerprinting.
+- **AI Decision Support:** Integrates with `Ollama` for high-level judge reviews and automated decision reasoning.
+- **Verdict States:**
+  - 🚨 **FLAG:** High-confidence match; immediate violation confirmed.
+  - ⚠️ **REVIEW:** Moderate-confidence; requires operator confirmation.
+  - ✅ **CLEAN:** No significant match detected.
 
-## Features Implemented
+---
 
-### Asset Management
-- **Duplicate Prevention:** Backend validation prevents multiple registrations of the same asset name by a single user.
-- **Optimized Uploads:** Asynchronous-capable file handling to prevent event-loop blocking during large transfers.
-- **Asset Vault:** Real-time fetching of user-owned assets on the dashboard.
+## 🛠️ Technical Stack
 
-### Security
-- **Authentication:** Complete sign-up and sign-in flow.
-- **Protected Routes:** Frontend guards ensure only authenticated operators can access the dashboard and registration tools.
-- **Concurrency Control:** UI-level protections (button disabling) to prevent race conditions and duplicate submissions.
+### Backend (The Node)
+- **Framework:** [FastAPI](https://fastapi.tiangolo.com/) (Python 3.12)
+- **Architecture:** Async-first, RESTful API with background tasks for heavy processing.
+- **Persistence:** SQLAlchemy ORM with PostgreSQL.
+- **Migrations:** Alembic.
+- **Heavy Lift Libraries:**
+  - `opencv-python`: Visual processing & frame extraction.
+  - `imagehash` & `pdqhash`: Perceptual hashing.
+  - `yt-dlp`: Universal video scraping.
+  - `google-api-python-client`: Official YouTube integration.
 
-## Getting Started
+### Frontend (Mission Control)
+- **Framework:** [Angular 19+](https://angular.dev/)
+- **Paradigm:** Standalone Components & Signals for reactive state management.
+- **Aesthetic:** Neo-Brutalism UI design featuring thick borders, sharp 0px corners, hard box shadows, and high-contrast neon accents on a dark canvas.
+- **Security:** Functional Auth Guards and Token Interceptors for secure terminal access.
+
+---
+
+## 📂 Project Structure
+
+```text
+D:\Projects\Sports-Media-Asset-Protection\
+├── backend/
+│   ├── app/
+│   │   ├── api/v1/        # Endpoints (Assets, Pipeline, Auth, Review)
+│   │   ├── db/models/     # SQLAlchemy Models (ScanJob, DetectionResult, etc.)
+│   │   ├── services/      # Business Logic (Fingerprint Generator, Scrapers, Orchestrator)
+│   │   └── main.py        # Application Entry
+│   ├── alembic/           # Database Migration Scripts
+│   └── pyproject.toml     # UV Dependency Configuration
+└── frontend/
+    ├── src/app/
+    │   ├── core/          # Services, Guards, Interceptors
+    │   ├── home/          # Main Dashboard & Mission Control
+    │   ├── register-asset/# Asset Ingestion Logic
+    │   ├── scan-job-new/  # Active Scan Terminal
+    │   └── scan-jobs-history/ # Audit Logs of all jobs
+    └── angular.json       # Project Config
+```
+
+---
+
+## ⚙️ Installation & Setup
 
 ### Prerequisites
-- Python 3.12+
-- Node.js (Latest LTS)
-- PostgreSQL
+- **Python 3.12+**
+- **Node.js 20+**
+- **PostgreSQL** (Active instance)
+- **Ollama** (Optional, for AI-based moderation)
 
-### Backend Setup
-1. Navigate to `/backend`
-2. Install dependencies: `uv sync`
-3. Configure `.env` file with your database credentials.
-4. Run migrations: `alembic upgrade head`
-5. Start server: `fastapi dev app/main.py`
+### 1. Backend Setup
+```bash
+cd backend
+# Install dependencies using UV
+uv sync
 
-### Frontend Setup
-1. Navigate to `/frontend`
-2. Install dependencies: `npm install`
-3. Start development server: `npm start`
-4. Access via `http://localhost:4200`
+# Configure Environment
+cp .env.example .env # Update DATABASE_URL and API Keys
 
-## System Architecture
+# Run Migrations
+alembic upgrade head
 
-The application follows a modular architecture:
-- `backend/app/api`: API routes and dependency injection.
-- `backend/app/db`: Database models and session management.
-- `frontend/src/app/core`: Shared services, guards, and interceptors.
-- `frontend/src/app/home`: Dashboard and asset overview.
-- `frontend/src/app/register-asset`: Multi-step asset ingestion form.
+# Start API Server
+fastapi dev app/main.py
+```
 
-## Future Roadmap & Enhancements
+### 2. Frontend Setup
+```bash
+cd frontend
+npm install
+npm start
+```
+*Access the terminal at `http://localhost:4200`*
 
-### [ENHANCE] Download-to-Stream Migration
-Currently, the system operates on a "Download-then-Scan" model where videos are fully downloaded to disk before processing. To optimize performance and reduce infrastructure costs, we plan to transition to a **Real-Time Stream Processing** model.
+---
 
-**Architectural Plan:**
-- **On-the-Fly Extraction:** Utilize `yt-dlp` to extract direct stream URLs instead of downloading binary files.
-- **In-Memory Buffering:** Use `OpenCV` or `FFmpeg` to open remote stream headers directly into a memory buffer.
-- **Concurrent Fingerprinting:** Process `pHash` and `PDQ` vectors as frames arrive in the buffer.
-- **Early-Exit Logic:** Implement a threshold-based "Confidence Kill-Switch" that terminates the network connection as soon as a high-probability match (FLAG) is detected, potentially within the first 5-10 seconds of a video.
-- **Zero Disk Footprint:** Eliminate temporary video storage to significantly reduce I/O overhead and increase processing horizontal scalability.
+## 🧪 Data Models & Domain
+- **Asset:** The master reference media protected by the rights holder.
+- **ScanJob:** A specific operation targeting a search query across platforms.
+- **ScrapedVideo:** Suspect media discovered by the scraper nodes.
+- **DetectionResult:** The analytical comparison between a `ScrapedVideo` and an `Asset`.
+- **JudgeReview:** Operator-level verification for `REVIEW` status detections.
