@@ -2,30 +2,45 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-export interface ScanRequest {
-  search_query: string;
-  platforms: string[];
+export interface AssetFrameMinimal {
+  frame_number: number;
+  file_path: string;
+  phash_value?: string;
+  pdq_hash?: string;
 }
 
-export interface ScanJob {
-  id: number;
-  search_query: string;
-  platforms: string[];
-  status: string;
-  created_at: string;
-  completed_at: string | null;
+export interface ScrapedFrameMinimal {
+  frame_number: number;
+  file_path: string;
+  phash_value?: string;
+  pdq_hash?: string;
 }
 
 export interface DetectionResult {
   id: number;
-  scraped_video_id: number;
-  matched_asset_id: number | null;
+  verdict: string;
   phash_score: number;
   pdq_score: number;
   audio_score: number;
   metadata_score: number;
   final_score: number;
-  verdict: string;
+  platform: string;
+  video_title: string;
+  video_url: string;
+  platform_video_id: string;
+  frames: string[];
+  suspect_frames: ScrapedFrameMinimal[];
+  matched_asset_id: number | null;
+  matched_asset_name: string | null;
+  matched_asset_owner: string | null;
+  best_ref_frame_path: string | null;
+  matched_asset_frames: AssetFrameMinimal[];
+  frame_similarities: number[];
+  pdq_similarities: number[];
+  uploader: string | null;
+  comments: any[];
+  like_count: number | null;
+  view_count: number | null;
   ai_decision: string | null;
   ai_reason: string | null;
   created_at: string;
@@ -37,16 +52,15 @@ export interface DetectionResult {
 export class PipelineService {
   private readonly http = inject(HttpClient);
 
-  startScan(data: ScanRequest): Observable<ScanJob> {
-    return this.http.post<ScanJob>('/api/pipeline/scan', data);
+  getStats(): Observable<any> {
+    return this.http.get<any>('/api/pipeline/stats');
   }
 
-  getScanJobs(): Observable<ScanJob[]> {
-    return this.http.get<ScanJob[]>('/api/pipeline/jobs');
+  getReviewQueue(): Observable<DetectionResult[]> {
+    return this.http.get<DetectionResult[]>('/api/pipeline/review-queue');
   }
 
-  getResults(jobId?: number): Observable<DetectionResult[]> {
-    const url = jobId ? `/api/pipeline/results?job_id=${jobId}` : '/api/pipeline/results';
-    return this.http.get<DetectionResult[]>(url);
+  getReviewCase(id: number): Observable<DetectionResult> {
+    return this.http.get<DetectionResult>(`/api/pipeline/review-queue/${id}`);
   }
 }

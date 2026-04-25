@@ -4,6 +4,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../core/services/auth.service';
+import { SidebarComponent } from '../core/components/sidebar/sidebar';
 
 interface ScanJob {
   id: number;
@@ -43,9 +44,9 @@ type Phase = 'form' | 'processing' | 'results';
 @Component({
   selector: 'app-scan-job-new',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, SidebarComponent],
   templateUrl: './scan-job-new.html',
-  styleUrls: ['./scan-job-new.css', '../home/home.css']
+  styleUrls: ['./scan-job-new.css']
 })
 export class ScanJobNew implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
@@ -65,15 +66,7 @@ export class ScanJobNew implements OnInit, OnDestroy {
   // Results state
   results = signal<DetectionResult[]>([]);
 
-  operatorName = 'UNKNOWN';
-  securityStatus = 'SECURE';
-
   ngOnInit() {
-    const user = this.authService.currentUser();
-    if (user) {
-      this.operatorName = user.operator_id;
-    }
-
     this.scanForm = this.fb.group({
       search_query: ['', Validators.required],
       youtube_enabled: [true],
@@ -240,15 +233,25 @@ export class ScanJobNew implements OnInit, OnDestroy {
   }
 
   getVerdictClass(verdict: string): string {
-    return { FLAG: 'badge-flag', REVIEW: 'badge-review', DROP: 'badge-clean' }[verdict] || '';
+    return { 
+      VIOLATED: 'badge-violated', 
+      FLAG: 'badge-flag', 
+      REVIEW: 'badge-review', 
+      DROP: 'badge-clean' 
+    }[verdict] || '';
   }
 
   getVerdictLabel(verdict: string): string {
-    return { FLAG: 'VIOLATION', REVIEW: 'REVIEW', DROP: 'CLEAN' }[verdict] || verdict;
+    return { 
+      VIOLATED: 'VIOLATED', 
+      FLAG: 'VIOLATION', 
+      REVIEW: 'REVIEW', 
+      DROP: 'CLEAN' 
+    }[verdict] || verdict;
   }
 
   get flagCount(): number {
-    return this.results().filter(r => r.verdict === 'FLAG').length;
+    return this.results().filter(r => r.verdict === 'FLAG' || r.verdict === 'VIOLATED').length;
   }
 
   get reviewCount(): number {

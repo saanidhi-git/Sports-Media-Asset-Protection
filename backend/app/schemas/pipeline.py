@@ -59,6 +59,18 @@ class DetectionResultOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AssetFrameMinimal(BaseModel):
+    frame_number: int
+    file_path: str
+    phash_value: Optional[str] = None
+    pdq_hash: Optional[str] = None
+
+class ScrapedFrameMinimal(BaseModel):
+    frame_number: int
+    file_path: str
+    phash_value: Optional[str] = None
+    pdq_hash: Optional[str] = None
+
 class EnrichedDetectionResult(BaseModel):
     """Detection result joined with ScrapedVideo + matched Asset info for the UI."""
     id: int
@@ -73,11 +85,17 @@ class EnrichedDetectionResult(BaseModel):
     video_title: str
     video_url: str
     platform_video_id: str
-    frames: list[str] = []
+    frames: list[str] = [] # Legacy list of paths
+    suspect_frames: list[ScrapedFrameMinimal] = []
     # Matched asset info
     matched_asset_id: Optional[int] = None
     matched_asset_name: Optional[str] = None
-    # Rich Meta
+    matched_asset_owner: Optional[str] = None
+    best_ref_frame_path: Optional[str] = None
+    matched_asset_frames: list[AssetFrameMinimal] = []
+    # Analysis
+    frame_similarities: list[float] = [] # Per-frame pHash similarity for graphing
+    pdq_similarities: list[float] = []   # Per-frame PDQ similarity for graphing
     uploader: Optional[str] = None
     comments: list[dict] = []
     like_count: Optional[int] = None

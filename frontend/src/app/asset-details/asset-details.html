@@ -19,6 +19,9 @@
       <a routerLink="/scan/history" class="nav-item">
         <span class="icon">📜</span> SCAN HISTORY
       </a>
+      <a routerLink="/human-review" class="nav-item">
+        <span class="icon">👥</span> HUMAN REVIEW
+      </a>
     </nav>
 
     <div class="operator-profile">
@@ -118,8 +121,8 @@
       </div>
 
       <div class="frames-grid" *ngIf="framesData() as data">
-        <div class="frame-card" *ngFor="let frame of data.frames">
-          <div class="frame-img-container">
+        <div class="frame-card" *ngFor="let frame of data.frames" (click)="openFrameDetails(frame)">
+          <div class="frame-img-container" (click)="openFrameDetails(frame); $event.stopPropagation()">
             <img [src]="getFrameUrl(frame.file_path)" alt="Frame {{ frame.frame_number }}">
             <div class="frame-overlay">
               <span>IDX: {{ frame.frame_number }}</span>
@@ -142,4 +145,35 @@
       <div class="progress-bar"><div class="progress-fill"></div></div>
     </div>
   </main>
+
+  <!-- FRAME DETAILS MODAL -->
+  <div class="modal-overlay" *ngIf="selectedFrame() as frame" (click)="closeModal()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>FRAME {{ frame.frame_number }} HASH DATA</h3>
+        <button class="close-btn" (click)="closeModal()">×</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="frame-preview-large">
+          <img [src]="getFrameUrl(frame.file_path)" alt="Large Frame">
+        </div>
+        
+        <div class="hash-details mt-20">
+          <div class="hash-row">
+            <label>PHASH (PERCEPTUAL):</label>
+            <span class="hash-value text-neon">{{ frame.phash_value || 'PENDING' }}</span>
+          </div>
+          <div class="hash-row">
+            <label>PDQ HASH (ROBUST):</label>
+            <span class="hash-value text-cyan">{{ frame.pdq_hash || 'PENDING' }}</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">CLOSE TERMINAL</button>
+      </div>
+    </div>
+  </div>
 </div>

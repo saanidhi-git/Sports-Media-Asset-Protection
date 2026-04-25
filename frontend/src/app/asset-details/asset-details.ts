@@ -1,7 +1,7 @@
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { AssetService, Asset, PaginatedFrames } from '../core/services/asset.service';
+import { AssetService, Asset, PaginatedFrames, AssetFrame } from '../core/services/asset.service';
 import { AuthService } from '../core/services/auth.service';
 
 @Component({
@@ -21,7 +21,8 @@ export class AssetDetails implements OnInit {
   protected readonly operatorName = signal('JH-XXXX');
   protected readonly securityStatus = signal('OPTIMAL');
   protected readonly isLoading = signal(true);
-  protected readonly currentPage = signal(1);
+  public readonly currentPage = signal(1);
+  public readonly selectedFrame = signal<AssetFrame | null>(null);
 
   ngOnInit() {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -68,6 +69,14 @@ export class AssetDetails implements OnInit {
     if (this.currentPage() > 1) {
       this.fetchFrames(this.asset()!.id, this.currentPage() - 1);
     }
+  }
+  
+  public openFrameDetails(frame: AssetFrame) {
+    this.selectedFrame.set(frame);
+  }
+
+  public closeModal() {
+    this.selectedFrame.set(null);
   }
 
   getFrameUrl(filePath: string): string {

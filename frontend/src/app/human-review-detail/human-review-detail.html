@@ -1,0 +1,241 @@
+<div class="dashboard-container">
+  <!-- SIDEBAR NAVIGATION -->
+  <app-sidebar></app-sidebar>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="main-content">
+    <header class="top-header" *ngIf="result() as r">
+      <div class="header-left">
+        <div class="breadcrumb">
+          <a routerLink="/human-review">REVIEW QUEUE</a> / CASE #{{ r.id }}
+        </div>
+        <h1>DISPATCH TERMINAL: {{ r.video_title }}</h1>
+        <p>In-depth analysis and takedown authorization for identified piracy.</p>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-secondary" routerLink="/human-review">← RETURN TO QUEUE</button>
+      </div>
+    </header>
+
+    <!-- LOADING STATE -->
+    <div class="flex-center" *ngIf="isLoading()" style="padding: 100px;">
+      <div class="terminal-loader">
+        <div class="loader-text">RETRIEVING CASE DATA...</div>
+        <div class="progress-bar"><div class="progress-fill"></div></div>
+      </div>
+    </div>
+
+    <!-- DETAIL VIEW -->
+    <div class="case-layout" *ngIf="!isLoading() && result() as r">
+      
+      <!-- TOP ROW: METRICS & INTEL -->
+      <div class="top-info-grid">
+        <div class="card metrics-card">
+          <h3 class="card-title">SIGNAL CONFIDENCE</h3>
+          <div class="metrics-row">
+            <div class="metric">
+              <span class="m-label">pHash</span>
+              <span class="m-val">{{ (r.phash_score * 100).toFixed(1) }}%</span>
+              <div class="m-bar"><div class="m-fill phash" [style.width.%]="r.phash_score * 100"></div></div>
+            </div>
+            <div class="metric">
+              <span class="m-label">PDQ</span>
+              <span class="m-val">{{ (r.pdq_score * 100).toFixed(1) }}%</span>
+              <div class="m-bar"><div class="m-fill pdq" [style.width.%]="r.pdq_score * 100"></div></div>
+            </div>
+            <div class="metric">
+              <span class="m-label">AUDIO</span>
+              <span class="m-val">{{ (r.audio_score * 100).toFixed(1) }}%</span>
+              <div class="m-bar"><div class="m-fill audio" [style.width.%]="r.audio_score * 100"></div></div>
+            </div>
+            <div class="metric final">
+              <span class="m-label">TOTAL</span>
+              <span class="m-val">{{ (r.final_score * 100).toFixed(1) }}%</span>
+              <div class="m-bar"><div class="m-fill final-bar" [style.width.%]="r.final_score * 100"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card intel-header-card">
+            <h3 class="card-title">📡 SOURCE METADATA</h3>
+            <div class="source-header-mini">
+              <h2 class="source-title">{{ r.video_title }}</h2>
+              <div class="source-sub">
+                  <span class="meta-tag">{{ r.platform | uppercase }}</span>
+                  <a [href]="r.video_url" target="_blank" class="btn-link">VIEW ORIGINAL ↗</a>
+              </div>
+            </div>
+        </div>
+      </div>
+
+      <!-- TREND ANALYSIS (LARGE) -->
+      <div class="card graph-card-large mt-25">
+        <h3 class="card-title">TEMPORAL SIMILARITY TREND (pHash)</h3>
+        <div class="chart-container-large">
+          <canvas baseChart
+            [data]="lineChartData"
+            [options]="lineChartOptions"
+            [type]="'line'">
+          </canvas>
+        </div>
+      </div>
+
+      <!-- SCATTER ANALYSIS (LARGE) -->
+      <div class="card graph-card-large mt-25">
+        <h3 class="card-title">MULTI-HASH DISTANCE ANALYSIS (SCATTER)</h3>
+        <div class="chart-container-large">
+          <canvas baseChart
+            [data]="scatterChartData"
+            [options]="scatterChartOptions"
+            [type]="'scatter'">
+          </canvas>
+        </div>
+      </div>
+
+      <!-- MIDDLE ROW: TECHNICAL LEDGER -->
+      <div class="ledger-section mt-25">
+        <div class="card ledger-card">
+          <h3 class="card-title">TECHNICAL FINGERPRINT LEDGER</h3>
+          <div class="table-container">
+            <table class="cyber-table-mini">
+              <thead>
+                <tr>
+                  <th>FRAME</th>
+                  <th>SUSPECT PDQ</th>
+                  <th>REFERENCE PDQ</th>
+                  <th>pHash SIM</th>
+                  <th>PDQ SIM</th>
+                  <th>VERDICT</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let sf of r.suspect_frames; let i = index">
+                  <td>#{{ sf.frame_number }}</td>
+                  <td class="hash-text">{{ sf.pdq_hash?.substring(0, 16) }}...</td>
+                  <td class="hash-text">{{ r.matched_asset_frames[i]?.pdq_hash?.substring(0, 16) }}...</td>
+                  <td>
+                    <div class="score-mini-pill phash">
+                        {{ (r.frame_similarities[i] * 100).toFixed(1) }}%
+                    </div>
+                  </td>
+                  <td>
+                    <div class="score-mini-pill pdq">
+                        {{ (r.pdq_similarities[i] * 100).toFixed(1) }}%
+                    </div>
+                  </td>
+                  <td><span class="tiny-badge" [class.match]="r.frame_similarities[i] > 0.8">{{ r.frame_similarities[i] > 0.8 ? 'MATCH' : 'REVIEW' }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW: FRAME COMPARISON -->
+      <div class="frames-section mt-25">
+        <div class="card frames-card">
+          <h3 class="card-title">VISUAL EVIDENCE LOG (CLICK TO MAGNIFY)</h3>
+          <div class="frames-comparison-list">
+            <div class="frame-pair clickable" *ngFor="let sf of r.suspect_frames; let i = index" (click)="openFrameModal(i)">
+                <div class="frame-index">FRAME #{{ sf.frame_number }}</div>
+                <div class="comparison-grid-mini">
+                    <div class="comp-box">
+                        <span class="comp-label">SUSPECT</span>
+                        <img [src]="'/' + sf.file_path.replace('\\\\', '/')" class="comp-img">
+                    </div>
+                    <div class="comp-box">
+                        <span class="comp-label">REFERENCE</span>
+                        <img [src]="'/' + r.matched_asset_frames[i]?.file_path?.replace('\\\\', '/')" class="comp-img" *ngIf="r.matched_asset_frames[i]">
+                        <div class="no-img" *ngIf="!r.matched_asset_frames[i]">N/A</div>
+                    </div>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FRAME COMPARISON MODAL -->
+      <div class="modal-overlay" *ngIf="selectedFramePair() as pair" (click)="closeModal()">
+        <div class="modal-content-large" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+                <h3>INVESTIGATIVE MAGNIFICATION: FRAME #{{ pair.index }}</h3>
+                <button class="close-btn" (click)="closeModal()">×</button>
+            </div>
+            <div class="modal-body-comparison">
+                <div class="comparison-large">
+                    <div class="img-box">
+                        <label>SUSPECT SOURCE</label>
+                        <img [src]="'/' + pair.suspect.file_path.replace('\\\\', '/')">
+                        <div class="hash-info">PDQ: {{ pair.suspect.pdq_hash }}</div>
+                    </div>
+                    <div class="img-box">
+                        <label>MASTER REFERENCE</label>
+                        <img [src]="'/' + pair.reference.file_path.replace('\\\\', '/')" *ngIf="pair.reference">
+                        <div class="no-img-large" *ngIf="!pair.reference">NO REFERENCE DATA</div>
+                        <div class="hash-info" *ngIf="pair.reference">PDQ: {{ pair.reference.pdq_hash }}</div>
+                    </div>
+                </div>
+                <div class="comparison-stats">
+                    <div class="stat-item">
+                        <span class="l">pHash Similarity</span>
+                        <span class="v">{{ (r.frame_similarities[pair.index-1] * 100).toFixed(2) }}%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="l">PDQ Similarity</span>
+                        <span class="v">{{ (r.pdq_similarities[pair.index-1] * 100).toFixed(2) }}%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      <!-- BOTTOM ROW: AI & EMAIL & COMMENTS -->
+      <div class="bottom-row-grid mt-25">
+        <div class="card ai-card">
+          <h3 class="card-title">🤖 AI ANALYST INSIGHTS</h3>
+          <div class="ai-box">
+            <div class="ai-header">VERDICT: <span [ngClass]="getVerdictClass(r.verdict)">{{ r.verdict }}</span></div>
+            <p class="ai-reason">{{ r.ai_reason }}</p>
+          </div>
+          
+          <div class="comments-section mt-25">
+            <label>TOP USER COMMENTS (CONTEXTUAL EVIDENCE)</label>
+            <div class="comments-list">
+              <div class="comment-item" *ngFor="let c of r.comments.slice(0, 5)">
+                <span class="c-author">@{{ c.author || 'user' }}:</span>
+                <span class="c-text">{{ c.text }}</span>
+              </div>
+              <div class="no-data-mini" *ngIf="r.comments.length === 0">No comments extracted.</div>
+            </div>
+          </div>
+
+          <div class="metadata-box mt-25">
+            <label>TECHNICAL SNAPSHOT</label>
+            <div class="meta-grid-2">
+                <div class="meta-item-mini">
+                    <span class="m-icon">👤</span>
+                    <span class="m-label">Uploader</span>
+                    <span class="m-val-text">{{ r.uploader || 'Anonymous' }}</span>
+                </div>
+                <div class="meta-item-mini">
+                    <span class="m-icon">👁️</span>
+                    <span class="m-label">Views</span>
+                    <span class="m-val-text">{{ r.view_count?.toLocaleString() || 'N/A' }}</span>
+                </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card dispatch-card">
+          <h3 class="card-title">LEGAL DISPATCH (DMCA NOTICE)</h3>
+          <textarea class="email-editor" [value]="emailTemplate()" readonly></textarea>
+          <div class="dispatch-actions mt-20">
+            <button class="btn btn-secondary" routerLink="/human-review">ABORT</button>
+            <button class="btn btn-danger" (click)='sendEmail()'>AUTHORIZE & DISPATCH TAKEDOWN</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>

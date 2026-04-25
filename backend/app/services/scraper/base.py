@@ -13,6 +13,7 @@ import random
 from typing import Optional
 import os
 import shutil
+import requests
 
 from app.core.config import settings
 from app.services.fingerprint.generator import get_audio_fp, get_pdq, get_phash
@@ -116,7 +117,7 @@ def get_stream_url(url: str, timeout: int = 30) -> str | None:
             [
                 "yt-dlp", "--no-warnings", "--quiet",
                 "--extractor-args", "youtube:player_client=android,web_creator",
-                "-f", "bestvideo[ext=mp4]/bestvideo/best[ext=mp4]/best",
+                "-f", "bestvideo/best",
                 "--get-url", "--no-playlist", url,
             ],
             capture_output=True, text=True, timeout=timeout,
@@ -249,3 +250,15 @@ def get_audio_fp_from_stream(url: str, duration_sec: int = settings.AUDIO_SEGMEN
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
     return None
+
+def download_image(url: str, output_path: str) -> bool:
+    """Downloads an image from a URL to a local file."""
+    try:
+        resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        resp.raise_for_status()
+        with open(output_path, "wb") as f:
+            f.write(resp.content)
+        return True
+    except Exception as e:
+        logger.warning(f"download_image failed for {url}: {e}")
+        return False

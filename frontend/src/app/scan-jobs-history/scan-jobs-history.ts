@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../core/services/auth.service';
+import { SidebarComponent } from '../core/components/sidebar/sidebar';
 
 interface ScanJob {
   id: number;
@@ -16,7 +17,7 @@ interface ScanJob {
 @Component({
   selector: 'app-scan-jobs-history',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, SidebarComponent],
   templateUrl: './scan-jobs-history.html',
   styleUrls: ['./scan-jobs-history.css', '../home/home.css']
 })
@@ -27,14 +28,7 @@ export class ScanJobsHistory implements OnInit {
   jobs = signal<ScanJob[]>([]);
   loading = signal<boolean>(true);
 
-  operatorName = 'UNKNOWN';
-  securityStatus = 'SECURE';
-
   ngOnInit() {
-    const user = this.authService.currentUser();
-    if (user) {
-      this.operatorName = user.operator_id;
-    }
     this.fetchJobs();
   }
 

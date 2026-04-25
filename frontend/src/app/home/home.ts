@@ -3,34 +3,29 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { AssetService, Asset } from '../core/services/asset.service';
+import { PipelineService } from '../core/services/pipeline.service';
+import { SidebarComponent } from '../core/components/sidebar/sidebar';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, SidebarComponent],
   templateUrl: './home.html',
   styleUrl: './home.css'
 })
 export class Home implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly assetService = inject(AssetService);
+  private readonly pipelineService = inject(PipelineService);
   
-  protected readonly operatorName = signal('JH-XXXX');
-  protected readonly securityStatus = signal('OPTIMAL');
   protected readonly userAssets = signal<Asset[]>([]);
   protected readonly totalAssetsCount = signal(0);
+  protected readonly violationsFound = signal(0);
+  protected readonly pendingReviews = signal(0);
 
   ngOnInit() {
-    this.authService.getMe().subscribe({
-      next: (user) => {
-        this.operatorName.set(user.operator_id);
-      },
-      error: (err) => {
-        console.error('Failed to fetch user profile', err);
-      }
-    });
-
     this.fetchUserAssets();
+    this.fetchStats();
   }
 
   fetchUserAssets() {
@@ -41,6 +36,18 @@ export class Home implements OnInit {
       },
       error: (err) => {
         console.error('Failed to fetch assets', err);
+      }
+    });
+  }
+
+  fetchStats() {
+    this.pipelineService.getStats().subscribe({
+      next: (stats) => {
+        this.violationsFound.set(stats.violations_found);
+        this.pendingReviews.set(stats.pending_reviews);
+      },
+      error: (err) => {
+        console.error('Failed to fetch stats', err);
       }
     });
   }
@@ -63,7 +70,6 @@ export class Home implements OnInit {
   }
 
   getAssetImage(asset: Asset): string {
-    // Generate a placeholder based on asset name or use a default
     const text = encodeURIComponent(asset.asset_name.substring(0, 10));
     return `https://placehold.co/400x400/141414/00f3ff?text=${text}`;
   }

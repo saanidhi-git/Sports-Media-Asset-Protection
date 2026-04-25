@@ -12,6 +12,8 @@ export interface AssetFrame {
   id: number;
   frame_number: number;
   file_path: string;
+  phash_value?: string;
+  pdq_hash?: string;
 }
 
 export interface PaginatedFrames {

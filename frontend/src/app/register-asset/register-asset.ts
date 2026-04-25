@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AssetService } from '../core/services/asset.service';
 import { AuthService } from '../core/services/auth.service';
+import { SidebarComponent } from '../core/components/sidebar/sidebar';
 
 @Component({
   selector: 'app-register-asset',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, SidebarComponent],
   templateUrl: './register-asset.html',
   styleUrl: './register-asset.css'
 })
@@ -16,9 +17,6 @@ export class RegisterAsset implements OnInit {
   private readonly router = inject(Router);
   private readonly assetService = inject(AssetService);
   private readonly authService = inject(AuthService);
-
-  protected readonly operatorName = signal('JH-XXXX');
-  protected readonly securityStatus = signal('OPTIMAL');
 
   protected assetName = '';
   protected ownerCompany = '';
@@ -39,11 +37,6 @@ export class RegisterAsset implements OnInit {
   protected readonly errorMessage = signal<string | null>(null);
 
   ngOnInit() {
-    // Fetch real operator name
-    this.authService.getMe().subscribe({
-      next: (user) => this.operatorName.set(user.operator_id),
-      error: (err) => console.error('Failed to fetch profile', err)
-    });
   }
 
   onFileSelected(event: Event) {

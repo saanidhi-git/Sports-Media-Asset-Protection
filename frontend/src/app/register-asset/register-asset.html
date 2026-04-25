@@ -1,34 +1,6 @@
 <div class="dashboard-container">
   <!-- SIDEBAR NAVIGATION -->
-  <aside class="sidebar">
-    <div class="brand">
-      <span class="brand-icon">🛡️</span>
-      <span class="brand-name">SHIELD_MEDIA</span>
-    </div>
-
-    <nav class="nav-links">
-      <a routerLink="/home" class="nav-item">
-        <span class="icon">📊</span> DASHBOARD
-      </a>
-      <a routerLink="/register-asset" class="nav-item active">
-        <span class="icon">📦</span> ASSET VAULT
-      </a>
-      <a routerLink="/scan/new" class="nav-item">
-        <span class="icon">📡</span> NEW SCAN
-      </a>
-      <a routerLink="/scan/history" class="nav-item">
-        <span class="icon">📜</span> SCAN HISTORY
-      </a>
-    </nav>
-
-    <div class="operator-profile">
-      <div class="avatar"></div>
-      <div class="info">
-        <div class="name">OP: {{ operatorName() }}</div>
-        <div class="status">STATUS: <span class="status-optimal">{{ securityStatus() }}</span></div>
-      </div>
-    </div>
-  </aside>
+  <app-sidebar></app-sidebar>
 
   <!-- MAIN CONTENT AREA -->
   <main class="main-content">

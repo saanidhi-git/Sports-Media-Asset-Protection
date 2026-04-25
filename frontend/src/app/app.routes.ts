@@ -5,6 +5,8 @@ import { RegisterAsset } from './register-asset/register-asset';
 import { AssetDetails } from './asset-details/asset-details';
 import { ScanJobNew } from './scan-job-new/scan-job-new';
 import { ScanJobsHistory } from './scan-jobs-history/scan-jobs-history';
+import { HumanReview } from './human-review/human-review';
+import { HumanReviewDetail } from './human-review-detail/human-review-detail';
 import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
@@ -13,5 +15,7 @@ export const routes: Routes = [
   { path: 'register-asset', component: RegisterAsset, canActivate: [authGuard] },
   { path: 'asset/:id', component: AssetDetails, canActivate: [authGuard] },
   { path: 'scan/new', component: ScanJobNew, canActivate: [authGuard] },
-  { path: 'scan/history', component: ScanJobsHistory, canActivate: [authGuard] }
+  { path: 'scan/history', component: ScanJobsHistory, canActivate: [authGuard] },
+  { path: 'human-review', component: HumanReview, canActivate: [authGuard] },
+  { path: 'human-review/:id', component: HumanReviewDetail, canActivate: [authGuard] }
 ];

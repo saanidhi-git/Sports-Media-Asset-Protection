@@ -14,6 +14,7 @@ from app.services.scraper.base import (
     get_stream_url,
     fingerprint_video_stream,
     get_audio_fp_from_stream,
+    download_image,
 )
 
 logger  = logging.getLogger(__name__)
@@ -116,6 +117,19 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_ex
         description = post.get("selftext", "")
         permalink = f"https://reddit.com{post.get('permalink', '')}"
         post_url  = post.get("url", "")
+        
+        # Extract thumbnail/preview for fallback
+        thumb_url = post.get("thumbnail")
+        if thumb_url in ("self", "default", "nsfw", ""):
+            thumb_url = None
+            
+        # Try to get a higher-res preview image
+        preview_images = post.get("preview", {}).get("images", [])
+        if preview_images:
+            # First resolution is often the source
+            p_url = preview_images[0].get("source", {}).get("url")
+            if p_url:
+                thumb_url = p_url.replace("&amp;", "&")
 
         base_dir = Path("uploads/scraped/reddit") / post_id
         base_dir.mkdir(parents=True, exist_ok=True)
@@ -146,6 +160,13 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_ex
             else:
                 logger.warning(f"   ❌ Could not get stream URL for Reddit video {post_id}")
                 fp = {"phashes": [], "pdq_hashes": [], "audio_fp": None, "frame_paths": [], "early_exit": False}
+
+            # --- FALLBACK: If no frames were extracted, try to save the Reddit thumbnail ---
+            if not fp.get("frame_paths") and thumb_url:
+                logger.info(f"   🖼 [2/2] No video frames; falling back to Reddit thumbnail...")
+                thumb_path = os.path.join(frames_dir, "thumb.jpg")
+                if download_image(thumb_url, thumb_path):
+                    fp["frame_paths"] = [thumb_path.replace("\\", "/")]
 
         else:
             video_path = str(base_dir / f"{post_id}.mp4")

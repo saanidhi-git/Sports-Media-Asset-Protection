@@ -108,7 +108,13 @@ def metadata_similarity(scraped_text: str, asset_description: str) -> float:
         logger.warning(f"Error calculating metadata similarity: {e}")
         return 0.0
 
-def compute_verdict(phash_score: float, pdq_score: float, audio_score: float, metadata_score: float = 0.0) -> Dict:
+def compute_verdict(
+    phash_score: float, 
+    pdq_score: float, 
+    audio_score: float, 
+    metadata_score: float = 0.0,
+    ai_match: bool = False
+) -> Dict:
     has_audio = audio_score > 0
     has_meta = metadata_score > 0
     
@@ -132,6 +138,30 @@ def compute_verdict(phash_score: float, pdq_score: float, audio_score: float, me
         verdict = "REVIEW"
     else:
         verdict = "DROP"
+
+    # --- USER SPECIFIC LOGIC ---
+    # 1. AI-Confirmed Match: If AI confirms + all available signals >= 40% -> Force REVIEW
+    if ai_match:
+        signals_above_40 = (
+            phash_score >= 0.4 and 
+            pdq_score >= 0.4 and 
+            (not has_audio or audio_score >= 0.4) and 
+            (not has_meta or metadata_score >= 0.4)
+        )
+        if signals_above_40:
+            logger.info("🤖 AI Confirmed + All signals > 40% -> Forcing REVIEW")
+            verdict = "REVIEW"
+
+    # 2. Absolute Match (90%+): If ALL signals >= 0.9 -> Force VIOLATED
+    signals_above_90 = (
+        phash_score >= 0.9 and 
+        pdq_score >= 0.9 and 
+        (not has_audio or audio_score >= 0.9) and 
+        (not has_meta or metadata_score >= 0.9)
+    )
+    if signals_above_90:
+        logger.info("🚨 Absolute Match -> Forcing VIOLATED status")
+        verdict = "VIOLATED"
         
     return {
         "phash_score": float(round(phash_score, 4)),

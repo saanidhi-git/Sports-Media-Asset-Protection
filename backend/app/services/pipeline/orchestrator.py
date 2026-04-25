@@ -88,7 +88,11 @@ def _match_against_assets(
         # Fast metadata overlap for candidate selection
         m = metadata_similarity(scraped_text, asset.match_description or "")
         
-        score_data = compute_verdict(p, pdq, a, metadata_score=m)
+        score_data = compute_verdict(
+            p, pdq, a, 
+            metadata_score=m, 
+            ai_match=(ai_decision == "HIGHLIGHT")
+        )
 
         if best_score_data is None or score_data["final_score"] > best_score_data["final_score"]:
             best_score_data = score_data
@@ -120,14 +124,16 @@ def _match_against_assets(
             
             # Update the detection with the high-fidelity AI feedback
             # We use the AI score to refine the metadata component of the final score
+            is_ai_match = (ai_m_score > 0.7)
             best_score_data = compute_verdict(
                 phash_score=best_score_data["phash_score"],
                 pdq_score=best_score_data["pdq_score"],
                 audio_score=best_score_data["audio_score"],
-                metadata_score=ai_m_score
+                metadata_score=ai_m_score,
+                ai_match=is_ai_match
             )
             final_ai_reason = ai_m_reason
-            final_ai_decision = "MATCH" if ai_m_score > 0.7 else "REVIEW"
+            final_ai_decision = "MATCH" if is_ai_match else "REVIEW"
 
     detection = DetectionResult(
         scraped_video_id = scraped_video.id,

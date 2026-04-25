@@ -1,34 +1,6 @@
 <div class="dashboard-container">
   <!-- SIDEBAR NAVIGATION -->
-  <aside class="sidebar">
-    <div class="brand">
-      <span class="brand-icon">🛡️</span>
-      <span class="brand-name">SHIELD_MEDIA</span>
-    </div>
-    
-    <nav class="nav-links">
-      <a routerLink="/home" class="nav-item active">
-        <span class="icon">📊</span> DASHBOARD
-      </a>
-      <a routerLink="/register-asset" class="nav-item">
-        <span class="icon">📦</span> ASSET VAULT
-      </a>
-      <a routerLink="/scan/new" class="nav-item">
-        <span class="icon">📡</span> NEW SCAN
-      </a>
-      <a routerLink="/scan/history" class="nav-item">
-        <span class="icon">📜</span> SCAN HISTORY
-      </a>
-    </nav>
-
-    <div class="operator-profile">
-      <div class="avatar"></div>
-      <div class="info">
-        <div class="name">OP: {{ operatorName() }}</div>
-        <div class="status">STATUS: <span class="status-optimal">{{ securityStatus() }}</span></div>
-      </div>
-    </div>
-  </aside>
+  <app-sidebar></app-sidebar>
 
   <!-- MAIN CONTENT AREA -->
   <main class="main-content">
@@ -54,17 +26,17 @@
       <div class="stat-card">
         <div class="stat-header">TOTAL ASSETS</div>
         <div class="stat-value">{{ totalAssetsCount() }}</div>
-        <div class="stat-footer">+{{ totalAssetsCount() }} since registration</div>
+        <div class="stat-footer">Protection active across vault</div>
       </div>
       <div class="stat-card">
-        <div class="stat-header">THREATS NEUTRALIZED</div>
-        <div class="stat-value text-neon">0</div>
-        <div class="stat-footer">Monitoring system active</div>
+        <div class="stat-header">VIOLATIONS FOUND</div>
+        <div class="stat-value text-neon">{{ violationsFound() }}</div>
+        <div class="stat-footer">High-confidence neural matches</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-header">PROTECTION LEVEL</div>
-        <div class="stat-value">HIGH</div>
-        <div class="stat-footer">Encryption: AES-256</div>
+      <div class="stat-card" routerLink="/human-review" style="cursor: pointer;">
+        <div class="stat-header">PENDING REVIEWS</div>
+        <div class="stat-value">{{ pendingReviews() }}</div>
+        <div class="stat-footer">Action required in Dispatch Terminal</div>
       </div>
     </section>
 

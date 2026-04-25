@@ -143,6 +143,47 @@ def get_enriched_results(
     return enriched
 
 
+from app.services.review.queue import get_human_review_queue, get_review_case, get_user_stats
+
+
+@router.get("/stats")
+def get_dashboard_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns high-level statistics for the user dashboard.
+    """
+    return get_user_stats(db, current_user.id)
+
+
+@router.get("/review-queue", response_model=list[EnrichedDetectionResult])
+def get_review_queue(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns all detection results tagged as REVIEW or VIOLATED for the current user.
+    Uses the dedicated review service.
+    """
+    return get_human_review_queue(db, current_user.id)
+
+
+@router.get("/review-queue/{case_id}", response_model=EnrichedDetectionResult)
+def get_case_detail(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns a specific detection result case detail.
+    """
+    case = get_review_case(db, case_id, current_user.id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Review case not found.")
+    return case
+
+
 @router.get("/jobs/{job_id}/logs", response_model=list[str])
 def get_job_logs(
     job_id: int,
