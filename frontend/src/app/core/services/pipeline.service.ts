@@ -66,6 +66,10 @@ export class PipelineService {
     return this.http.get<DetectionResult>(`/api/pipeline/review-queue/${id}`);
   }
 
+  getHealthMatrix(): Observable<any> {
+    return this.http.get<any>('/api/health/matrix');
+  }
+
   sendNotice(detectionId: number, recipientEmail: string, subject: string, content: string, attachments?: string[]): Observable<any> {
     return this.http.post<any>('/api/notice/send', {
       detection_id: detectionId,

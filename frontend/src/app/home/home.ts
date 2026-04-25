@@ -22,10 +22,12 @@ export class Home implements OnInit {
   protected readonly totalAssetsCount = signal(0);
   protected readonly violationsFound = signal(0);
   protected readonly pendingReviews = signal(0);
+  protected readonly healthMatrix = signal<any>(null);
 
   ngOnInit() {
     this.fetchUserAssets();
     this.fetchStats();
+    this.fetchHealth();
   }
 
   fetchUserAssets() {
@@ -49,6 +51,13 @@ export class Home implements OnInit {
       error: (err) => {
         console.error('Failed to fetch stats', err);
       }
+    });
+  }
+
+  fetchHealth() {
+    this.pipelineService.getHealthMatrix().subscribe({
+      next: (data) => this.healthMatrix.set(data),
+      error: (err) => console.error('Failed to fetch health matrix', err)
     });
   }
 

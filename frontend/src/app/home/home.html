@@ -40,13 +40,40 @@
       </div>
     </section>
 
+    <!-- SYSTEM STABILITY MATRIX -->
+    <section class="health-matrix-section card mt-25" *ngIf="healthMatrix() as hm">
+        <div class="card-header">
+            <h3>🛡️ SYSTEM STABILITY MATRIX</h3>
+            <span class="status-badge" [ngClass]="hm.status === 'operational' ? 'badge-clean' : 'badge-violated'">
+                {{ hm.status | uppercase }}
+            </span>
+        </div>
+        <div class="health-grid mt-15">
+            <div class="health-item" [class.error]="hm.components.database.status !== 'healthy'">
+                <div class="h-label">DATABASE CLUSTER</div>
+                <div class="h-status">{{ hm.components.database.status | uppercase }}</div>
+                <div class="h-detail" *ngIf="hm.components.database.detail">{{ hm.components.database.detail }}</div>
+            </div>
+            <div class="health-item" [class.warning]="hm.components.smtp.status !== 'healthy'">
+                <div class="h-label">SMTP RELAY</div>
+                <div class="h-status">{{ hm.components.smtp.status | uppercase }}</div>
+                <div class="h-detail">Host: {{ hm.components.smtp.host }}</div>
+            </div>
+            <div class="health-item" [class.error]="hm.components.storage.status !== 'healthy'">
+                <div class="h-label">MEDIA STORAGE</div>
+                <div class="h-status">{{ hm.components.storage.status | uppercase }}</div>
+                <div class="h-detail" *ngIf="hm.components.storage.detail">{{ hm.components.storage.detail }}</div>
+            </div>
+        </div>
+    </section>
+
     <!-- ASSET MANAGEMENT & VAULT -->
-    <section class="management-section">
+    <section class="management-section mt-25">
       <div class="section-header-row">
         <div class="section-title">ASSET MANAGEMENT & VAULT</div>
         <button class="btn-text">BROWSE ALL VAULT</button>
       </div>
-      
+
       <div class="square-asset-grid">
         <!-- ADD NEW ASSET (RECTANGULAR) -->
         <div class="asset-sq-card add-new-sq" routerLink="/register-asset">
@@ -73,11 +100,6 @@
               {{ asset.status }} <span class="view-hint">| VIEW TERMINAL →</span>
             </div>
           </div>
-        </div>
-        
-        <!-- Placeholder for when no assets exist -->
-        <div class="no-assets" *ngIf="userAssets().length === 0">
-           <p>No assets registered yet.</p>
         </div>
       </div>
     </section>

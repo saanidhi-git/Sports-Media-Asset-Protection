@@ -3,10 +3,16 @@ Sports Guardian AI — FastAPI Application Entry Point
 """
 import os
 import logging
-
-from fastapi import FastAPI
+import time
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
 from app.core.job_logging import setup_job_logging
+from app.db.session import SessionLocal, engine
+from app.api.deps import get_db
+from app.core.config import settings
 
 # Initialize the custom thread-local job logger
 setup_job_logging()
@@ -51,5 +57,63 @@ def root():
 
 
 @app.get("/health", tags=["Health"])
-def health():
-    return {"status": "healthy"}
+@app.get("/health/matrix", tags=["Health"])
+def health(db: Session = Depends(get_db)):
+    """
+    Detailed system health matrix to monitor stability and configuration.
+    Helps prevent crashes in development by verifying all subsystems.
+    """
+    health_matrix = {
+        "status": "operational",
+        "timestamp": time.time(),
+        "components": {
+            "database": {"status": "unknown"},
+            "smtp": {"status": "unknown"},
+            "storage": {"status": "unknown"},
+        }
+    }
+
+    # 1. Check Database
+    try:
+        db.execute(text("SELECT 1"))
+        health_matrix["components"]["database"] = {
+            "status": "healthy",
+            "latency_ms": "n/a" # Simple check
+        }
+    except Exception as e:
+        health_matrix["status"] = "degraded"
+        health_matrix["components"]["database"] = {
+            "status": "error",
+            "detail": str(e)
+        }
+
+    # 2. Check SMTP Config
+    is_smtp_configured = all([
+        settings.SMTP_HOST,
+        settings.SMTP_USER,
+        settings.SMTP_PASS,
+        settings.EMAILS_FROM_EMAIL
+    ])
+    health_matrix["components"]["smtp"] = {
+        "status": "healthy" if is_smtp_configured else "unconfigured",
+        "host": settings.SMTP_HOST or "none"
+    }
+
+    # 3. Check Storage (Uploads directory)
+    try:
+        test_file = os.path.join(UPLOAD_DIR, ".health_check")
+        with open(test_file, "w") as f:
+            f.write("ok")
+        os.remove(test_file)
+        health_matrix["components"]["storage"] = {
+            "status": "healthy",
+            "path": os.path.abspath(UPLOAD_DIR)
+        }
+    except Exception as e:
+        health_matrix["status"] = "degraded"
+        health_matrix["components"]["storage"] = {
+            "status": "error",
+            "detail": str(e)
+        }
+
+    return health_matrix

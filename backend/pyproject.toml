@@ -1,7 +1,7 @@
 [project]
 name = "backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "Shield Media Asset Protection Backend"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -32,4 +32,13 @@ dependencies = [
     "langgraph-sdk>=0.3.13",
     "langgraph-api>=0.8.1",
     "langgraph-cli[api,sdk]>=0.4.24",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "respx>=0.20.0",
+    "httpx>=0.28.1",
 ]

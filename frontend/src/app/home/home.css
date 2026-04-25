@@ -33,6 +33,39 @@
   color: var(--dark-text-muted);
 }
 
+/* SYSTEM HEALTH MATRIX */
+.health-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.health-item {
+    background: rgba(0, 243, 255, 0.03);
+    border: 1px solid rgba(0, 243, 255, 0.1);
+    padding: 15px;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.h-label { font-size: 9px; font-weight: 800; color: #666; letter-spacing: 1px; }
+.h-status { font-size: 14px; font-weight: 900; color: var(--neon-blue); }
+.h-detail { font-size: 10px; color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.health-item.warning {
+    background: rgba(255, 166, 0, 0.03);
+    border-color: rgba(255, 166, 0, 0.2);
+}
+.health-item.warning .h-status { color: orange; }
+
+.health-item.error {
+    background: rgba(255, 51, 102, 0.03);
+    border-color: rgba(255, 51, 102, 0.2);
+}
+.health-item.error .h-status { color: #ff3366; }
+
 /* ASSET MANAGEMENT UNIFIED GRID */
 .management-section {
   margin-bottom: 50px;
@@ -290,6 +323,9 @@
   border: 1px solid var(--accent-red);
 }
 
+.status-badge.badge-clean { background: rgba(0, 255, 170, 0.1); color: #00ffaa; border: 1px solid rgba(0, 255, 170, 0.2); }
+.status-badge.badge-violated { background: rgba(255, 51, 102, 0.1); color: #ff3366; border: 1px solid rgba(255, 51, 102, 0.2); }
+
 /* LOGS */
 .status-indicator {
   font-size: 10px;
@@ -339,6 +375,9 @@
 .mt-auto {
   margin-top: auto;
 }
+
+.mt-25 { margin-top: 25px; }
+.mt-15 { margin-top: 15px; }
 
 /* RESPONSIVE */
 @media (max-width: 1200px) {
