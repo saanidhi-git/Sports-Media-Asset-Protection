@@ -25,5 +25,11 @@ dependencies = [
     "google-api-python-client>=2.194.0",
     "tavily-python>=0.7.23",
     "requests>=2.33.1",
-    "langchain-ollama>=1.1.0",
+    "httpx>=0.28.1",
+    "scikit-learn>=1.8.0",
+    "langgraph>=1.1.9",
+    "langgraph-checkpoint>=4.0.2",
+    "langgraph-sdk>=0.3.13",
+    "langgraph-api>=0.8.1",
+    "langgraph-cli[api,sdk]>=0.4.24",
 ]

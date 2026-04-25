@@ -34,6 +34,33 @@ def _api_search(query: str, max_results: int) -> list[dict]:
     return response.get("items", [])
 
 
+def _fetch_comments(video_id: str) -> list[dict]:
+    """Fetch top 5 comments for a video."""
+    from googleapiclient.discovery import build
+    try:
+        youtube = build("youtube", "v3", developerKey=settings.YOUTUBE_API_KEY)
+        response = youtube.commentThreads().list(
+            part="snippet",
+            videoId=video_id,
+            maxResults=5,
+            order="relevance",
+            textFormat="plainText"
+        ).execute()
+        
+        comments = []
+        for item in response.get("items", []):
+            snippet = item["snippet"]["topLevelComment"]["snippet"]
+            comments.append({
+                "author": snippet["authorDisplayName"],
+                "text": snippet["textDisplay"],
+                "like_count": snippet.get("likeCount", 0),
+            })
+        return comments
+    except Exception as e:
+        logger.warning(f"Could not fetch YouTube comments for {video_id}: {e}")
+        return []
+
+
 def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_exit_score_fn=None) -> list[dict]:
     """
     Search YouTube, fingerprint it, and return a list of result dicts.
@@ -49,7 +76,9 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_ex
     results = []
     for item in items:
         vid   = item["id"]["videoId"]
-        title = item["snippet"]["title"]
+        snippet = item["snippet"]
+        title = snippet["title"]
+        description = snippet.get("description", "")
         url   = f"https://www.youtube.com/watch?v={vid}"
 
         base_dir = Path("uploads/scraped/youtube") / vid
@@ -85,11 +114,17 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_ex
             except Exception:
                 pass
 
+        # Enrich with comments and extra stats
+        comments = _fetch_comments(vid)
+
         results.append({
             "platform":          "youtube",
             "platform_video_id": vid,
             "title":             title,
+            "description":       description,
             "url":               url,
+            "uploader":          snippet.get("channelTitle"),
+            "comments":          comments,
             **fp,
         })
         logger.info(

@@ -20,6 +20,7 @@ interface DetectionResult {
   phash_score: number;
   pdq_score: number;
   audio_score: number;
+  metadata_score: number;
   final_score: number;
   platform: string;
   video_title: string;
@@ -28,6 +29,12 @@ interface DetectionResult {
   frames: string[];
   matched_asset_id: number | null;
   matched_asset_name: string | null;
+  uploader: string | null;
+  comments: any[];
+  like_count: number | null;
+  view_count: number | null;
+  ai_decision: string | null;
+  ai_reason: string | null;
   created_at: string;
 }
 

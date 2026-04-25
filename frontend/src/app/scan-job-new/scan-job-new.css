@@ -510,6 +510,7 @@
 .score-bar-fill.phash     { background: #60a5fa; }
 .score-bar-fill.pdq       { background: #4ade80; }
 .score-bar-fill.audio     { background: #a78bfa; }
+.score-bar-fill.meta      { background: #f472b6; }
 .score-bar-fill.final-bar { background: #fb923c; }
 
 .score-val {
@@ -518,6 +519,91 @@
   width: 48px;
   text-align: right;
   flex-shrink: 0;
+}
+
+/* ── AI INSIGHT ──────────────────────────── */
+.ai-insight {
+  margin-top: 16px;
+  background: rgba(0, 243, 255, 0.03);
+  border: 1px solid rgba(0, 243, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.insight-header {
+  background: rgba(0, 243, 255, 0.08);
+  padding: 6px 12px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--neon-blue);
+  border-bottom: 1px solid rgba(0, 243, 255, 0.1);
+}
+/* ── COMMUNITY INSIGHTS ──────────────────── */
+.community-insights {
+  margin-bottom: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--dark-border);
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.insight-header-small {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--dark-text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.comments-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 120px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.comment-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+}
+
+.comment-author {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--neon-blue);
+  font-family: 'Space Mono', monospace;
+}
+
+.comment-text {
+  font-size: 11px;
+  color: var(--dark-text-main);
+  line-height: 1.4;
+}
+
+.comment-likes {
+  font-size: 9px;
+  color: #f87171;
+  margin-top: 2px;
+}
+
+.insight-body {
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dark-text-main);
+  font-family: 'Space Mono', monospace;
+}
+
+.insight-body strong {
+  color: var(--neon-blue);
+  margin-right: 6px;
 }
 
 .no-results {

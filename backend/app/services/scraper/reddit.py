@@ -52,6 +52,33 @@ def _search_page(query: str, after: str | None) -> dict:
     return resp.json()
 
 
+def _fetch_reddit_comments(post_id: str) -> list[dict]:
+    """Fetch top comments for a Reddit post."""
+    try:
+        url = f"https://www.reddit.com/comments/{post_id}.json"
+        resp = _SESSION.get(url, params={"sort": "top", "limit": 5}, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        
+        # Reddit comments JSON is a list: [post_info, comments_info]
+        comments_info = data[1]
+        children = comments_info.get("data", {}).get("children", [])
+        
+        comments = []
+        for child in children:
+            if child["kind"] == "t1": # Comment type
+                c = child["data"]
+                comments.append({
+                    "author": c.get("author"),
+                    "text": c.get("body"),
+                    "like_count": c.get("ups", 0),
+                })
+        return comments
+    except Exception as e:
+        logger.warning(f"Could not fetch Reddit comments for {post_id}: {e}")
+        return []
+
+
 def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_exit_score_fn=None) -> list[dict]:
     """
     Page through Reddit search, collect video posts up to `limit`, chunk-download
@@ -86,6 +113,7 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_ex
     for post in posts:
         post_id   = post.get("id", "unknown")
         title     = post.get("title", "Reddit Video")
+        description = post.get("selftext", "")
         permalink = f"https://reddit.com{post.get('permalink', '')}"
         post_url  = post.get("url", "")
 
@@ -139,12 +167,18 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_ex
             except Exception:
                 pass
 
+        # Enrich with comments
+        comments = _fetch_reddit_comments(post_id)
+
         results.append({
             "platform":          "reddit",
             "platform_video_id": post_id,
             "title":             title,
+            "description":       description,
             "url":               permalink,
             "subreddit":         post.get("subreddit", ""),
+            "uploader":          post.get("author"),
+            "comments":          comments,
             **fp,
         })
         logger.info(

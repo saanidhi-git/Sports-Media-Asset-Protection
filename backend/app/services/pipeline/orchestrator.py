@@ -13,13 +13,14 @@ from app.db.models.detection_result import DetectionResult
 from app.db.models.scan_job import ScanJob
 from app.db.models.scraped_video import ScrapedVideo
 from app.db.models.scraped_frame import ScrapedFrame
-from app.services.decision.ai_moderator import ai_moderate
 from app.services.scoring.engine import (
     audio_similarity,
     compute_verdict,
     pdq_similarity,
     phash_similarity,
+    metadata_similarity,
 )
+from app.services.decision.ai_moderator import ai_moderate, ai_deep_analysis
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,8 @@ def _match_against_assets(
     suspect_phashes: list[str],
     suspect_pdq_hashes: list[str],
     suspect_audio_fp: str | None,
+    scraped_text: str = "",
+    scraped_comments: list[dict] = [],
     ai_decision: Optional[str] = None,
     ai_reason: Optional[str] = None,
 ) -> DetectionResult:
@@ -72,11 +75,20 @@ def _match_against_assets(
         ref_pdq_hashes = [f.pdq_hash   for f in asset.frames if f.pdq_hash]
         ref_audio_fp   = asset.audio_fp
 
+    # yield_per avoids loading entire assets table into RAM
+    for asset in db.query(Asset).filter(Asset.status == "COMPLETED").yield_per(100):
+        ref_phashes    = [f.phash_value for f in asset.frames if f.phash_value]
+        ref_pdq_hashes = [f.pdq_hash   for f in asset.frames if f.pdq_hash]
+        ref_audio_fp   = asset.audio_fp
+
         p   = phash_similarity(suspect_phashes, ref_phashes)
         pdq = pdq_similarity(suspect_pdq_hashes, ref_pdq_hashes)
         a   = audio_similarity(suspect_audio_fp, ref_audio_fp)
-
-        score_data = compute_verdict(p, pdq, a)
+        
+        # Fast metadata overlap for candidate selection
+        m = metadata_similarity(scraped_text, asset.match_description or "")
+        
+        score_data = compute_verdict(p, pdq, a, metadata_score=m)
 
         if best_score_data is None or score_data["final_score"] > best_score_data["final_score"]:
             best_score_data = score_data
@@ -85,8 +97,37 @@ def _match_against_assets(
     if best_score_data is None:
         best_score_data = {
             "phash_score": 0.0, "pdq_score": 0.0, "audio_score": 0.0,
-            "final_score": 0.0, "verdict": "DROP",
+            "metadata_score": 0.0, "final_score": 0.0, "verdict": "DROP",
         }
+
+    # ── PHASE 4: AI Deep Contextual Analysis ──
+    # Only perform deep analysis if we found a potential match candidate
+    final_ai_decision = ai_decision
+    final_ai_reason = ai_reason
+    
+    if best_asset_id and best_score_data["verdict"] in ("FLAG", "REVIEW"):
+        best_asset = db.query(Asset).filter(Asset.id == best_asset_id).first()
+        if best_asset:
+            logger.info(f"   🤖 [AI] Performing Deep Analysis against Asset: {best_asset.asset_name}...")
+            ai_m_score, ai_m_reason = ai_deep_analysis(
+                scraped_title=scraped_video.title,
+                scraped_desc=scraped_video.description or "",
+                scraped_comments=scraped_comments,
+                asset_name=best_asset.asset_name,
+                asset_desc=best_asset.match_description or "",
+                asset_owner=best_asset.owner_company
+            )
+            
+            # Update the detection with the high-fidelity AI feedback
+            # We use the AI score to refine the metadata component of the final score
+            best_score_data = compute_verdict(
+                phash_score=best_score_data["phash_score"],
+                pdq_score=best_score_data["pdq_score"],
+                audio_score=best_score_data["audio_score"],
+                metadata_score=ai_m_score
+            )
+            final_ai_reason = ai_m_reason
+            final_ai_decision = "MATCH" if ai_m_score > 0.7 else "REVIEW"
 
     detection = DetectionResult(
         scraped_video_id = scraped_video.id,
@@ -94,10 +135,11 @@ def _match_against_assets(
         phash_score      = best_score_data["phash_score"],
         pdq_score        = best_score_data["pdq_score"],
         audio_score      = best_score_data["audio_score"],
+        metadata_score   = best_score_data["metadata_score"],
         final_score      = best_score_data["final_score"],
         verdict          = best_score_data["verdict"],
-        ai_decision      = ai_decision,
-        ai_reason        = ai_reason,
+        ai_decision      = final_ai_decision,
+        ai_reason        = final_ai_reason,
     )
     db.add(detection)
     db.commit()
@@ -175,7 +217,7 @@ def run_pipeline_job(
                 logger.info(f"──── 🎬 Processing: {item['title'][:60]}")
                 
                 # ── Agent 6: AI Moderation ─────────────────────────────────
-                ai_decision, ai_reason = ai_moderate(item["title"])
+                ai_decision, ai_reason = ai_moderate(item["title"], item.get("description", ""))
                 logger.info(f"   🤖 [AI] {ai_decision} | {ai_reason}")
                 
                 if ai_decision == "DISCUSSION":
@@ -188,8 +230,13 @@ def run_pipeline_job(
                     platform          = item["platform"],
                     platform_video_id = item["platform_video_id"],
                     title             = item["title"],
+                    description       = item.get("description", ""),
                     url               = item["url"],
                     frame_paths       = item.get("frame_paths", []),
+                    uploader          = item.get("uploader"),
+                    like_count        = item.get("like_count"),
+                    view_count        = item.get("view_count"),
+                    comments          = item.get("comments", []),
                 )
                 db.add(scraped)
                 db.commit()
@@ -212,13 +259,19 @@ def run_pipeline_job(
                 db.commit()
 
                 # Match against all registered assets
-                logger.info(f"   🔍 [3/4] Running Piracy Scan (pHash + PDQ + Audio)...")
+                logger.info(f"   🔍 [3/4] Running Piracy Scan (pHash + PDQ + Audio + Meta)...")
+                
+                # Build scraped_text for metadata matching
+                scraped_text = f"{item['title']} {item.get('description', '')}".strip()
+                
                 _match_against_assets(
                     db,
                     scraped,
                     phashes,
                     pdq_hashes,
                     item.get("audio_fp"),
+                    scraped_text=scraped_text,
+                    scraped_comments=item.get("comments", []),
                     ai_decision=ai_decision,
                     ai_reason=ai_reason,
                 )

@@ -49,6 +49,7 @@ class DetectionResultOut(BaseModel):
     phash_score: float
     pdq_score: float
     audio_score: float
+    metadata_score: float
     final_score: float
     verdict: str
     ai_decision: Optional[str] = None
@@ -65,6 +66,7 @@ class EnrichedDetectionResult(BaseModel):
     phash_score: float
     pdq_score: float
     audio_score: float
+    metadata_score: float
     final_score: float
     # Scraped video info
     platform: str
@@ -75,6 +77,11 @@ class EnrichedDetectionResult(BaseModel):
     # Matched asset info
     matched_asset_id: Optional[int] = None
     matched_asset_name: Optional[str] = None
+    # Rich Meta
+    uploader: Optional[str] = None
+    comments: list[dict] = []
+    like_count: Optional[int] = None
+    view_count: Optional[int] = None
     # AI Moderation info
     ai_decision: Optional[str] = None
     ai_reason: Optional[str] = None

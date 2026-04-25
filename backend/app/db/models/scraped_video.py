@@ -17,9 +17,16 @@ class ScrapedVideo(Base):
     platform = Column(String, index=True, nullable=False) # youtube, reddit, instagram
     platform_video_id = Column(String, index=True, nullable=False)
     title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
     url = Column(String, nullable=False)
     local_folder_path = Column(String, nullable=True)
     frame_paths = Column(JSON, default=[])
+    
+    # Rich Metadata
+    uploader = Column(String, nullable=True)
+    like_count = Column(Integer, nullable=True)
+    view_count = Column(Integer, nullable=True)
+    comments = Column(JSON, default=[]) # Store top comments as JSON list
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

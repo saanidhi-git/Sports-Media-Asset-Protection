@@ -1,9 +1,9 @@
 # Enhancement Plan: Gemini AI + Metadata Scoring
 
 ## Goals
-1. **Speed** — Replace local Ollama/Qwen2.5 (slow cold start) with Gemini Flash via OpenRouter (fast, remote, no local GPU needed)
+1. **Speed** — Replace local Ollama/Qwen2.5 (slow cold start) with Gemini Flash via OpenRouter (fast, remote, no local GPU needed) (uninstall langchain-ollama and install langchain_openrouter)
 2. **Smarter AI** — Gemini is a far more capable model for nuanced title/description analysis
-3. **New Scoring Signal** — Add a `metadata_score` that compares the scraped video's **title + description** against the registered asset's `match_description` field
+3. **New Scoring Signal** — Add a `metadata_score` that compares the scraped video's **title + description+top comments** against the registered asset's `match_description` field
 
 ---
 
@@ -38,6 +38,10 @@ OPENROUTER_API_KEY: str = ""
 - `langchain_ollama`, `langchain_core` — remove entirely
 - Local Ollama dependency
 
+## Make the Dicussion throuhg agentic AI
+- use Langgraph
+
+
 ### Add
 - Raw `httpx.post()` call to `https://openrouter.ai/api/v1/chat/completions`
 - Model: `google/gemini-flash-1.5` (sub-1s, cheapest Gemini tier)
@@ -64,6 +68,8 @@ Reply ONLY as: DECISION | REASON (one sentence, max 20 words).
 > [!TIP]
 > Gemini Flash returns in ~400ms vs. Qwen2.5 local which can take 5–15s cold.
 > This alone makes each video process **10–35x faster**.
+
+# for comparison use the description of the asset when we have create one 
 
 ---
 
@@ -101,9 +107,9 @@ W_AUDIO = 0.50
 
 # New weights (sum to 1.0)
 W_PHASH = 0.15
-W_PDQ   = 0.25
-W_AUDIO = 0.45
-W_META  = 0.15   # ← NEW: metadata description match
+W_PDQ   = 0.35
+W_AUDIO = 0.30
+W_META  = 0.20   # ← NEW: metadata description match
 ```
 
 > [!NOTE]

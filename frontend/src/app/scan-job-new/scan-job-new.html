@@ -234,6 +234,9 @@
 
         <div class="result-meta">
           <span class="meta-tag">{{ r.platform | uppercase }}</span>
+          <span class="meta-tag" *ngIf="r.uploader">👤 {{ r.uploader }}</span>
+          <span class="meta-tag" *ngIf="r.view_count">👁️ {{ r.view_count.toLocaleString() }}</span>
+          <span class="meta-tag" *ngIf="r.like_count">👍 {{ r.like_count.toLocaleString() }}</span>
           <span class="meta-tag" *ngIf="r.matched_asset_name">MATCH: {{ r.matched_asset_name }}</span>
           <a [href]="r.video_url" target="_blank" class="meta-link">OPEN SOURCE ↗</a>
         </div>
@@ -247,27 +250,52 @@
           </div>
         </div>
 
+        <!-- RICH INSIGHTS: COMMENTS -->
+        <div class="community-insights" *ngIf="r.comments && r.comments.length > 0">
+          <div class="insight-header-small">AUDIENCE SIGNALS (Top Comments)</div>
+          <div class="comments-scroll">
+            <div *ngFor="let c of r.comments" class="comment-item">
+              <span class="comment-author">@{{ c.author }}</span>
+              <span class="comment-text">{{ c.text }}</span>
+              <span class="comment-likes" *ngIf="c.like_count">❤️ {{ c.like_count }}</span>
+            </div>
+          </div>
+        </div>
+
         <!-- SCORE BARS -->
         <div class="score-section">
           <div class="score-row">
-            <span class="score-label">pHash (w=0.20)</span>
+            <span class="score-label">pHash (w=0.30)</span>
             <div class="score-bar-track"><div class="score-bar-fill phash" [style.width.%]="r.phash_score * 100"></div></div>
             <span class="score-val">{{ r.phash_score.toFixed(3) }}</span>
           </div>
           <div class="score-row">
-            <span class="score-label">PDQ (w=0.30)</span>
+            <span class="score-label">PDQ (w=0.25)</span>
             <div class="score-bar-track"><div class="score-bar-fill pdq" [style.width.%]="r.pdq_score * 100"></div></div>
             <span class="score-val">{{ r.pdq_score.toFixed(3) }}</span>
           </div>
           <div class="score-row">
-            <span class="score-label">Audio (w=0.50)</span>
+            <span class="score-label">Audio (w=0.32)</span>
             <div class="score-bar-track"><div class="score-bar-fill audio" [style.width.%]="r.audio_score * 100"></div></div>
             <span class="score-val">{{ r.audio_score.toFixed(3) }}</span>
+          </div>
+          <div class="score-row">
+            <span class="score-label">Metadata (w=0.13)</span>
+            <div class="score-bar-track"><div class="score-bar-fill meta" [style.width.%]="r.metadata_score * 100"></div></div>
+            <span class="score-val">{{ r.metadata_score.toFixed(3) }}</span>
           </div>
           <div class="score-row final">
             <span class="score-label">FINAL SCORE</span>
             <div class="score-bar-track"><div class="score-bar-fill final-bar" [style.width.%]="r.final_score * 100"></div></div>
             <span class="score-val">{{ r.final_score.toFixed(3) }}</span>
+          </div>
+        </div>
+
+        <!-- AI REASONING -->
+        <div class="ai-insight" *ngIf="r.ai_reason">
+          <div class="insight-header">🤖 AI ANALYST INSIGHT</div>
+          <div class="insight-body">
+            <strong>{{ r.ai_decision }}:</strong> {{ r.ai_reason }}
           </div>
         </div>
       </div>

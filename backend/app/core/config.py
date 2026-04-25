@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     # External API Keys — server will refuse to start if these are blank
     YOUTUBE_API_KEY: str
     TAVILY_API_KEY: str
+    OPENROUTER_API_KEY: str
 
     # Streaming Configuration
     STREAM_MODE: bool = True

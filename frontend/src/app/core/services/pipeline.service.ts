@@ -23,6 +23,7 @@ export interface DetectionResult {
   phash_score: number;
   pdq_score: number;
   audio_score: number;
+  metadata_score: number;
   final_score: number;
   verdict: string;
   ai_decision: string | null;

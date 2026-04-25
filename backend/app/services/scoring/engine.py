@@ -4,10 +4,11 @@ from typing import List, Optional, Dict
 
 logger = logging.getLogger(__name__)
 
-# Weights
-W_PHASH = 0.20
-W_PDQ = 0.30
-W_AUDIO = 0.50
+# New Weights (sum to 1.0)
+W_PHASH = 0.30
+W_PDQ = 0.25
+W_AUDIO = 0.32
+W_META = 0.13
 
 # Thresholds
 THRESHOLD_FLAG = 0.85
@@ -78,16 +79,52 @@ def audio_similarity(suspect_fp: Optional[str], ref_fp: Optional[str]) -> float:
         logger.warning(f"Error calculating audio similarity: {e}")
         return 0.0
 
-def compute_verdict(phash_score: float, pdq_score: float, audio_score: float) -> Dict:
+def metadata_similarity(scraped_text: str, asset_description: str) -> float:
+    """
+    Returns 0.0–1.0 similarity.
+    Updated: Less strict than TF-IDF. Uses token overlap ratio.
+    """
+    if not scraped_text or not asset_description:
+        return 0.0
+
+    try:
+        # Preprocessing: lower case and remove common short words
+        s_tokens = set(t for t in scraped_text.lower().split() if len(t) > 3)
+        a_tokens = set(t for t in asset_description.lower().split() if len(t) > 3)
+        
+        if not s_tokens or not a_tokens:
+            # Fallback to shorter words if no long ones exist
+            s_tokens = set(scraped_text.lower().split())
+            a_tokens = set(asset_description.lower().split())
+            if not s_tokens or not a_tokens:
+                return 0.0
+            
+        intersection = s_tokens.intersection(a_tokens)
+        # Lenient: overlap relative to the smaller set of tokens
+        score = len(intersection) / min(len(s_tokens), len(a_tokens))
+        
+        return float(round(min(1.0, score), 4))
+    except Exception as e:
+        logger.warning(f"Error calculating metadata similarity: {e}")
+        return 0.0
+
+def compute_verdict(phash_score: float, pdq_score: float, audio_score: float, metadata_score: float = 0.0) -> Dict:
     has_audio = audio_score > 0
-    total_w = W_PHASH + W_PDQ
+    has_meta = metadata_score > 0
+    
+    # Calculate weighted total dynamically based on available signals
+    active_w = W_PHASH + W_PDQ
+    weighted_sum = (W_PHASH * phash_score) + (W_PDQ * pdq_score)
     
     if has_audio:
-        total_w += W_AUDIO
-        final_score = (W_PHASH / total_w) * phash_score + (W_PDQ / total_w) * pdq_score + (W_AUDIO / total_w) * audio_score
-    else:
-        # If no audio matched, rely entirely on visual
-        final_score = (W_PHASH / total_w) * phash_score + (W_PDQ / total_w) * pdq_score
+        active_w += W_AUDIO
+        weighted_sum += (W_AUDIO * audio_score)
+    
+    if has_meta:
+        active_w += W_META
+        weighted_sum += (W_META * metadata_score)
+        
+    final_score = weighted_sum / active_w
         
     if final_score >= THRESHOLD_FLAG:
         verdict = "FLAG"
@@ -100,6 +137,7 @@ def compute_verdict(phash_score: float, pdq_score: float, audio_score: float) ->
         "phash_score": float(round(phash_score, 4)),
         "pdq_score": float(round(pdq_score, 4)),
         "audio_score": float(round(audio_score, 4)),
+        "metadata_score": float(round(metadata_score, 4)),
         "final_score": float(round(final_score, 4)),
         "verdict": verdict
     }

@@ -19,6 +19,7 @@ class DetectionResult(Base):
     phash_score = Column(Float, nullable=False, default=0.0)
     pdq_score = Column(Float, nullable=False, default=0.0)
     audio_score = Column(Float, nullable=False, default=0.0)
+    metadata_score = Column(Float, nullable=False, default=0.0)
     final_score = Column(Float, nullable=False, default=0.0)
     
     verdict = Column(String, nullable=False, index=True) # FLAG, REVIEW, DROP
