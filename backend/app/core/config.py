@@ -23,6 +23,22 @@ class Settings(BaseSettings):
     TAVILY_API_KEY: str
     OPENROUTER_API_KEY: str
 
+    # SMTP Settings
+    SMTP_TLS: bool = True
+    SMTP_PORT: Optional[int] = 587
+    SMTP_HOST: Optional[str] = None
+    SMTP_USER: Optional[str] = None
+    SMTP_PASS: Optional[str] = None
+    EMAILS_FROM_EMAIL: Optional[str] = None
+    EMAILS_FROM_NAME: Optional[str] = "SHIELD_MEDIA"
+
+    @field_validator("EMAILS_FROM_EMAIL", mode="before")
+    @classmethod
+    def set_default_from_email(cls, v: Optional[str], info: Any) -> Any:
+        if v:
+            return v
+        return info.data.get('SMTP_USER')
+
     # Streaming Configuration
     STREAM_MODE: bool = True
     EARLY_EXIT_THRESHOLD: float = 0.80

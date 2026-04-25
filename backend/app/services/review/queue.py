@@ -115,6 +115,8 @@ def enrich_detection_result(db: Session, det: DetectionResult) -> EnrichedDetect
         view_count=sv.view_count,
         ai_decision=det.ai_decision,
         ai_reason=det.ai_reason,
+        dispatch_status=det.dispatch_status,
+        dispatched_at=det.dispatched_at,
         created_at=det.created_at,
     )
 

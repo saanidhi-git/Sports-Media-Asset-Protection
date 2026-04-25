@@ -27,6 +27,9 @@ class DetectionResult(Base):
     ai_decision = Column(String, nullable=True)
     ai_reason = Column(Text, nullable=True)
     
+    dispatch_status = Column(String, nullable=False, default="PENDING") # PENDING, DISPATCHED
+    dispatched_at = Column(DateTime(timezone=True), nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     scraped_video = relationship("ScrapedVideo", back_populates="detection_results")

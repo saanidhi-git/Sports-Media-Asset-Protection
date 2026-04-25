@@ -22,10 +22,10 @@
       </div>
     </div>
 
-    <!-- QUEUE LIST -->
+    <!-- PENDING QUEUE LIST -->
     <section class="review-section card" *ngIf="!isLoading()">
       <div class="section-header">
-        <h3 class="card-title">PENDING DECISIONS ({{ results().length }})</h3>
+        <h3 class="card-title">🛡️ PENDING AUTHORIZATION ({{ pendingResults().length }})</h3>
       </div>
 
       <div class="review-table-container">
@@ -41,7 +41,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let r of results()">
+            <tr *ngFor="let r of pendingResults()">
               <td>
                 <span class="platform-tag">
                   {{ getPlatformIcon(r.platform) }} {{ r.platform | uppercase }}
@@ -66,8 +66,58 @@
           </tbody>
         </table>
 
-        <div class="no-data" *ngIf="results().length === 0">
+        <div class="no-data" *ngIf="pendingResults().length === 0">
           <p>CLEAN STATE: No detections currently require human intervention.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- DISPATCHED HISTORY LIST -->
+    <section class="review-section card mt-25" *ngIf="!isLoading()">
+      <div class="section-header">
+        <h3 class="card-title">🚀 ENFORCEMENT HISTORY ({{ dispatchedResults().length }})</h3>
+      </div>
+
+      <div class="review-table-container">
+        <table class="cyber-table">
+          <thead>
+            <tr>
+              <th>PLATFORM</th>
+              <th>TITLE</th>
+              <th>DISPATCHED AT</th>
+              <th>SCORE</th>
+              <th>STATUS</th>
+              <th>ACTION</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of dispatchedResults()">
+              <td>
+                <span class="platform-tag">
+                  {{ getPlatformIcon(r.platform) }} {{ r.platform | uppercase }}
+                </span>
+              </td>
+              <td class="title-cell" [title]="r.video_title">{{ r.video_title }}</td>
+              <td>{{ r.dispatched_at | date:'short' }}</td>
+              <td>
+                <div class="score-pill" style="background-color: rgba(0, 243, 255, 0.1); color: #00f3ff; border: 1px solid rgba(0, 243, 255, 0.2);">
+                  {{ (r.final_score * 100).toFixed(1) }}%
+                </div>
+              </td>
+              <td>
+                <span class="status-badge" style="background: rgba(0, 255, 170, 0.1); color: #00ffaa; border: 1px solid rgba(0, 255, 170, 0.2);">
+                  DISPATCHED
+                </span>
+              </td>
+              <td>
+                <a class="btn btn-secondary btn-sm" [routerLink]="['/human-review', r.id]">VIEW LOG →</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="no-data" *ngIf="dispatchedResults().length === 0">
+          <p>EMPTY HISTORY: No takedown notices have been dispatched yet.</p>
         </div>
       </div>
     </section>

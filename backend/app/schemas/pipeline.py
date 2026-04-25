@@ -103,4 +103,8 @@ class EnrichedDetectionResult(BaseModel):
     # AI Moderation info
     ai_decision: Optional[str] = None
     ai_reason: Optional[str] = None
+    # Dispatch info
+    dispatch_status: str = "PENDING"
+    dispatched_at: Optional[datetime] = None
+    
     created_at: datetime

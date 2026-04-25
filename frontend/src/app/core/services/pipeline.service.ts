@@ -43,6 +43,8 @@ export interface DetectionResult {
   view_count: number | null;
   ai_decision: string | null;
   ai_reason: string | null;
+  dispatch_status: string;
+  dispatched_at: string | null;
   created_at: string;
 }
 
@@ -62,5 +64,15 @@ export class PipelineService {
 
   getReviewCase(id: number): Observable<DetectionResult> {
     return this.http.get<DetectionResult>(`/api/pipeline/review-queue/${id}`);
+  }
+
+  sendNotice(detectionId: number, recipientEmail: string, subject: string, content: string, attachments?: string[]): Observable<any> {
+    return this.http.post<any>('/api/notice/send', {
+      detection_id: detectionId,
+      recipient_email: recipientEmail,
+      subject: subject,
+      content: content,
+      attachments: attachments || []
+    });
   }
 }

@@ -6,13 +6,15 @@ import { BaseChartDirective } from 'ng2-charts';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import { AuthService } from '../core/services/auth.service';
 import { SidebarComponent } from '../core/components/sidebar/sidebar';
+import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 Chart.register(...registerables);
 
 @Component({
   selector: 'app-human-review-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, BaseChartDirective, SidebarComponent],
+  imports: [CommonModule, RouterModule, BaseChartDirective, SidebarComponent, FormsModule],
   templateUrl: './human-review-detail.html',
   styleUrl: './human-review-detail.css'
 })
@@ -21,12 +23,20 @@ export class HumanReviewDetail implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly sanitizer = inject(DomSanitizer);
 
   public readonly result = signal<DetectionResult | null>(null);
   public readonly isLoading = signal(true);
   public readonly emailTemplate = signal('');
+  public readonly emailHtmlTemplate = signal<SafeHtml>('');
+  public readonly rawHtmlForDispatch = signal('');
   public readonly operatorName = signal('JH-XXXX');
   public readonly selectedFramePair = signal<{suspect: ScrapedFrameMinimal, reference: AssetFrameMinimal | null, index: number} | null>(null);
+
+  // Dispatch Modal State
+  public readonly showDispatchModal = signal(false);
+  public readonly recipientEmail = signal('');
+  public readonly isDispatching = signal(false);
 
   // Line Chart (Similarity Trend)
   public lineChartData: ChartConfiguration<'line'>['data'] = {
@@ -67,7 +77,7 @@ export class HumanReviewDetail implements OnInit {
       {
         data: [],
         label: 'PDQ Similarity',
-        backgroundColor: '#ff3366',
+        backgroundColor: '#60a5fa',
         pointRadius: 6,
         pointStyle: 'rect'
       }
@@ -164,40 +174,134 @@ export class HumanReviewDetail implements OnInit {
 
   generateEmailTemplate(r: DetectionResult) {
     const date = new Date().toLocaleDateString();
-    const template = `
-Subject: Copyright Inquiry & Takedown Request – ${r.matched_asset_name || 'Sports Media Content'}
+    
+    // Rich HTML Template - Blue and Black Professional Look
+    const htmlTemplate = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #000; padding: 2px; border: 1px solid #222; border-radius: 8px; color: #fff;">
+        <!-- HEADER: Blue Branding -->
+        <div style="background-color: #000; color: #00f3ff; padding: 30px; text-align: center; border-radius: 6px 6px 0 0; border-bottom: 2px solid #00f3ff;">
+          <h1 style="margin: 0; font-size: 32px; letter-spacing: 4px; font-weight: 900;">🛡️ SHIELD MEDIA</h1>
+          <h2 style="margin: 8px 0 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #60a5fa; letter-spacing: 2px;">Enforcement Terminal Notice</h2>
+        </div>
+        
+        <div style="background-color: #0a0a0b; padding: 30px; border-radius: 0 0 6px 6px;">
+          <p style="font-size: 13px; color: #00f3ff; text-transform: uppercase; letter-spacing: 1px;"><strong>TO: PLATFORM COMPLIANCE / LEGAL TEAM</strong></p>
+          <p style="font-size: 14px; color: #ccc; line-height: 1.6;">
+            We are formally notifying you of unauthorized proprietary content hosted on your platform, confirmed through <strong>Neural Fingerprint Synchronization</strong>.
+          </p>
 
-To the Platform Support / Legal Team:
+          <!-- FORENSIC ANALYSIS SECTION: Blue Highlights -->
+          <div style="background-color: rgba(0, 243, 255, 0.02); border: 1px solid rgba(0, 243, 255, 0.1); padding: 20px; border-radius: 4px; margin: 25px 0;">
+            <h3 style="color: #00f3ff; margin-top: 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">📊 FORENSIC VALIDATION DATA</h3>
+            <table style="width: 100%; border-collapse: collapse; color: #fff; font-size: 13px;">
+              <tr>
+                <td style="padding: 8px 0; color: #888;">pHash Similarity:</td>
+                <td style="padding: 8px 0; text-align: right; color: #00f3ff; font-weight: bold;">${(r.phash_score * 100).toFixed(2)}%</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #888;">PDQ Alignment:</td>
+                <td style="padding: 8px 0; text-align: right; color: #00f3ff; font-weight: bold;">${(r.pdq_score * 100).toFixed(2)}%</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #888;">Audio Sync Match:</td>
+                <td style="padding: 8px 0; text-align: right; color: #00f3ff; font-weight: bold;">${(r.audio_score * 100).toFixed(2)}%</td>
+              </tr>
+              <tr style="border-top: 1px solid #333;">
+                <td style="padding: 12px 0; color: #fff; font-weight: bold;">MATCH CONFIDENCE:</td>
+                <td style="padding: 12px 0; text-align: right; color: #00f3ff; font-weight: bold; font-size: 20px;">${(r.final_score * 100).toFixed(2)}%</td>
+              </tr>
+            </table>
+          </div>
 
-Can you please check the copyright of the content identified below? We have identified this material as a potential unauthorized copy of our proprietary media assets.
+          <h3 style="color: #60a5fa; border-bottom: 1px solid #222; padding-bottom: 8px; margin-top: 25px; font-size: 13px; text-transform: uppercase;">📌 MASTER REFERENCE</h3>
+          <ul style="font-size: 13px; color: #aaa; line-height: 1.8; list-style-type: none; padding: 0;">
+            <li><strong>ASSET:</strong> <span style="color:#eee;">${r.matched_asset_name || 'Proprietary Sports Broadcast'}</span></li>
+            <li><strong>OWNER:</strong> <span style="color:#eee;">${r.matched_asset_owner || 'SportGuardian Protected Entity'}</span></li>
+          </ul>
 
-If it is confirmed to be our content, can you please take it down immediately?
+          <h3 style="color: #60a5fa; border-bottom: 1px solid #222; padding-bottom: 8px; margin-top: 25px; font-size: 13px; text-transform: uppercase;">🚨 TARGET MATERIAL</h3>
+          <ul style="font-size: 13px; color: #aaa; line-height: 1.8; list-style-type: none; padding: 0;">
+            <li><strong>SOURCE:</strong> <a href="${r.video_url}" style="color: #00f3ff; text-decoration: none;">${r.video_url}</a></li>
+            <li><strong>ID:</strong> ${r.platform_video_id}</li>
+            <li><strong>TITLE:</strong> ${r.video_title}</li>
+          </ul>
 
-1. Identification of the Copyrighted Work:
-* Official Asset: ${r.matched_asset_name || 'Proprietary Sports Broadcast'}
-* Asset Owner: ${r.matched_asset_owner || 'SportGuardian Protected Entity'}
-* Proof of Identity: Neural Fingerprint Overlap (${(r.phash_score * 100).toFixed(1)}% match).
+          <div style="background-color: rgba(0, 243, 255, 0.05); border-left: 4px solid #00f3ff; padding: 15px; margin-top: 25px;">
+            <p style="margin: 0; font-size: 13px; color: #eee; line-height: 1.6;">
+              <strong>ENFORCEMENT ACTION:</strong> Request immediate removal of this material. Forensic visual evidence is attached to this formal inquiry.
+            </p>
+          </div>
 
-2. Identification of the Flagged Material:
-* URL: ${r.video_url}
-* Platform ID: ${r.platform_video_id}
-* Title: ${r.video_title}
-* Identified via: ShieldMedia AI Neural Analysis
-
-3. Legal Statement:
-I have a good-faith belief that the use of the material in the manner complained of is not authorized by the copyright owner, its agent, or the law. I swear, under penalty of perjury, that the information in this notification is accurate and that I am authorized to act on behalf of the owner of the exclusive rights that are allegedly infringed.
-
-Signed,
-SHIELD_MEDIA OPERATOR ${this.operatorName()}
-SportGuardian AI Protection Team
-Date: ${date}
+          <div style="margin-top: 30px; font-size: 11px; color: #555; border-top: 1px solid #1a1a1a; padding-top: 15px;">
+            <p><strong>LEGAL ATTESTATION:</strong> I have a good-faith belief that use of the material in the manner complained of is not authorized. I swear, under penalty of perjury, that the information in this notification is accurate.</p>
+            
+            <p style="margin-top: 20px; color: #888;">
+              Sincerely,<br>
+              <strong style="color: #00f3ff;">SHIELD_MEDIA ENFORCEMENT OPERATOR ${this.operatorName()}</strong><br>
+              SportGuardian AI Protection Team<br>
+              Date: ${date}
+            </p>
+          </div>
+        </div>
+      </div>
     `.trim();
-    this.emailTemplate.set(template);
+
+    this.rawHtmlForDispatch.set(htmlTemplate);
+    this.emailHtmlTemplate.set(this.sanitizer.bypassSecurityTrustHtml(htmlTemplate));
   }
 
-  sendEmail() {
-    alert('COPYRIGHT TAKEDOWN EMAIL DISPATCHED SUCCESSFULLY.');
-    this.router.navigate(['/human-review']);
+  openDispatchModal() {
+    this.showDispatchModal.set(true);
+  }
+
+  closeDispatchModal() {
+    this.showDispatchModal.set(false);
+  }
+
+  confirmDispatch() {
+    if (!this.recipientEmail() || !this.rawHtmlForDispatch()) {
+      alert('Recipient email and template are required.');
+      return;
+    }
+
+    const r = this.result();
+    if (!r) return;
+
+    this.isDispatching.set(true);
+    const subject = `URGENT: Copyright Takedown Request – ${r.matched_asset_name || 'Sports Media Content'}`;
+    
+    // Gather attachments: take top 3 frame pairs as evidence
+    const attachments: string[] = [];
+    const sortedIndices = r.frame_similarities
+      .map((score, index) => ({ score, index }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map(item => item.index);
+
+    sortedIndices.forEach(idx => {
+      if (r.suspect_frames[idx]) attachments.push(r.suspect_frames[idx].file_path);
+      if (r.matched_asset_frames[idx]) attachments.push(r.matched_asset_frames[idx].file_path);
+    });
+
+    this.pipelineService.sendNotice(
+      r.id,
+      this.recipientEmail(),
+      subject,
+      this.rawHtmlForDispatch(),
+      attachments
+    ).subscribe({
+      next: () => {
+        this.isDispatching.set(false);
+        this.showDispatchModal.set(false);
+        alert(`TAKEDOWN NOTICE DISPATCHED WITH ${attachments.length} ATTACHMENTS TO: ${this.recipientEmail()}`);
+        this.router.navigate(['/human-review']);
+      },
+      error: (err) => {
+        console.error('Failed to dispatch notice', err);
+        this.isDispatching.set(false);
+        alert(`Failed to dispatch notice: ${err.error?.detail || err.message}`);
+      }
+    });
   }
 
   getPlatformIcon(platform: string): string {

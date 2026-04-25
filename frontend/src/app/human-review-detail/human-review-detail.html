@@ -9,7 +9,7 @@
         <div class="breadcrumb">
           <a routerLink="/human-review">REVIEW QUEUE</a> / CASE #{{ r.id }}
         </div>
-        <h1>DISPATCH TERMINAL: {{ r.video_title }}</h1>
+        <h1>🛡️ DISPATCH TERMINAL: {{ r.video_title }}</h1>
         <p>In-depth analysis and takedown authorization for identified piracy.</p>
       </div>
       <div class="header-right">
@@ -227,12 +227,54 @@
         </div>
 
         <div class="card dispatch-card">
-          <h3 class="card-title">LEGAL DISPATCH (DMCA NOTICE)</h3>
-          <textarea class="email-editor" [value]="emailTemplate()" readonly></textarea>
+          <div class="card-header-flex">
+            <h3 class="card-title">🛡️ SHIELD MEDIA LEGAL DISPATCH (DMCA NOTICE)</h3>
+            <span class="status-badge dispatched" *ngIf="r.dispatch_status === 'DISPATCHED'">
+                ✅ DISPATCHED ON {{ r.dispatched_at | date:'short' }}
+            </span>
+          </div>
+          
+          <!-- Rich HTML Email Preview -->
+          <div class="email-preview-container">
+            <div class="email-preview" [innerHTML]="emailHtmlTemplate()"></div>
+          </div>
+
           <div class="dispatch-actions mt-20">
             <button class="btn btn-secondary" routerLink="/human-review">ABORT</button>
-            <button class="btn btn-danger" (click)='sendEmail()'>AUTHORIZE & DISPATCH TAKEDOWN</button>
+            <button class="btn btn-danger" (click)='openDispatchModal()'>
+                {{ r.dispatch_status === 'DISPATCHED' ? '🛡️ RE-DISPATCH TAKEDOWN' : '🛡️ AUTHORIZE & DISPATCH TAKEDOWN' }}
+            </button>
           </div>
+        </div>
+      </div>
+
+      <!-- AUTHORIZATION MODAL -->
+      <div class="modal-overlay" *ngIf="showDispatchModal()" (click)="closeDispatchModal()">
+        <div class="modal-content-auth" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+                <h3>🛡️ AUTHORIZE ENFORCEMENT ACTION</h3>
+                <button class="close-btn" (click)="closeDispatchModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-subtitle">Confirm recipient details for this takedown dispatch.</p>
+                
+                <div class="form-group mt-20">
+                    <label>RECIPIENT EMAIL</label>
+                    <input type="email" [ngModel]="recipientEmail()" (ngModelChange)="recipientEmail.set($event)" placeholder="legal-team@platform.com">
+                </div>
+
+                <div class="legal-warning mt-20">
+                    <span class="warning-icon">⚠️</span>
+                    <p>By clicking confirm, you authorize SHIELD_MEDIA to dispatch a formal copyright inquiry on behalf of the asset owner. This includes attaching visual evidence frames automatically.</p>
+                </div>
+
+                <div class="modal-actions mt-25">
+                    <button class="btn btn-secondary" (click)="closeDispatchModal()">CANCEL</button>
+                    <button class="btn btn-danger btn-full" (click)="confirmDispatch()" [disabled]="!recipientEmail() || isDispatching()">
+                        {{ isDispatching() ? '🚀 DISPATCHING...' : '🔴 CONFIRM DISPATCH' }}
+                    </button>
+                </div>
+            </div>
         </div>
       </div>
 
