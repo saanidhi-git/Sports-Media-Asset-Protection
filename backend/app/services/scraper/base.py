@@ -132,6 +132,12 @@ def get_stream_url(url: str, timeout: int = 90) -> str | None:
             cmd, capture_output=True, text=True, timeout=timeout,
             encoding="utf-8", errors="replace",
         )
+        
+        # FAIL FAST: Check if we are blocked
+        if "confirm you're not a bot" in result.stderr:
+            logger.warning(f"🛑 Cloud blocked for {url}. Please use Hybrid Mode.")
+            return None
+
         stream_url = result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
         if stream_url.startswith("http"):
             return stream_url
@@ -161,6 +167,10 @@ def _probe_duration(url: str, timeout: int = 90) -> float | None:
             cmd, capture_output=True, text=True, timeout=timeout,
             encoding="utf-8", errors="replace",
         )
+
+        if "confirm you're not a bot" in res.stderr:
+            return None
+
         raw = res.stdout.strip()
         if raw and raw.replace(".", "", 1).isdigit():
             return float(raw)

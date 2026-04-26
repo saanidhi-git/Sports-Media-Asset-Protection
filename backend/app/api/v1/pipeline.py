@@ -17,12 +17,49 @@ from app.schemas.pipeline import (
     ScanRequest,
     ExternalPushRequest,
 )
-from app.services.pipeline.orchestrator import run_pipeline_job, process_external_results
-from app.core.config import settings
-import os
-from app.core.job_logging import JOB_LOGS_DIR
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, UploadFile, File, Form
+from app.services.pipeline.orchestrator import run_pipeline_job, process_external_results, process_raw_external_item
+import json
 
-router = APIRouter(prefix="/pipeline", tags=["Pipeline"])
+@router.post("/external-push-raw", status_code=status.HTTP_202_ACCEPTED)
+def push_external_raw(
+    background_tasks: BackgroundTasks,
+    job_id: int = Form(...),
+    api_key: str = Form(...),
+    metadata_json: str = Form(...), # Standard fields: platform, title, url, etc.
+    frames: list[UploadFile] = File(...),
+    audio: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Receives raw frames and audio from local agent. 
+    Extraction & fingerprinting happen here on Render.
+    """
+    if api_key != settings.EXTERNAL_AGENT_KEY:
+        raise HTTPException(status_code=403, detail="Invalid external agent API key.")
+
+    job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Scan job not found.")
+
+    try:
+        metadata = json.loads(metadata_json)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid metadata_json.")
+
+    # Read files into memory for background processing
+    frame_bytes = [f.file.read() for f in frames]
+    audio_bytes = audio.file.read() if audio else None
+
+    background_tasks.add_task(
+        process_raw_external_item,
+        db,
+        job.id,
+        metadata,
+        frame_bytes,
+        audio_bytes
+    )
+    return {"status": "accepted", "job_id": job.id}
 
 
 @router.post("/scan", response_model=ScanJobOut, status_code=status.HTTP_202_ACCEPTED)
@@ -55,6 +92,22 @@ def start_scan(
     )
     return job
 
+
+from fastapi.responses import FileResponse
+
+@router.get("/download-agent")
+def download_agent():
+    """Download the local agent script for hybrid scanning."""
+    agent_path = os.path.join(os.getcwd(), "local_agent.py")
+    if not os.path.exists(agent_path):
+        # Fallback for different directory structures
+        agent_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "local_agent.py")
+    
+    return FileResponse(
+        path=agent_path,
+        filename="local_agent.py",
+        media_type="application/octet-stream"
+    )
 
 @router.post("/external-push", status_code=status.HTTP_202_ACCEPTED)
 def push_external_results(

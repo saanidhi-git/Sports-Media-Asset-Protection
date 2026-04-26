@@ -284,4 +284,9 @@ export class ScanJobNew implements OnInit, OnDestroy {
     this.currentJobId.set(null);
     this.currentJob.set(null);
   }
+
+  downloadAgent() {
+    // Trigger download of the local agent script
+    window.open(`${this.apiUrl}/api/v1/pipeline/download-agent`, '_blank');
+  }
 }

@@ -132,6 +132,27 @@
     </header>
 
     <div class="processing-layout">
+      <!-- HYBRID MODE INSTRUCTIONS -->
+      <div class="card hybrid-instructions-card">
+        <h3 class="card-title text-neon">🚀 HYBRID SCANNING ENABLED</h3>
+        <p class="dim">YouTube/Instagram often block cloud servers. For a perfect demo, run the scan logic from your local machine using our Agent script.</p>
+        
+        <div class="steps-box">
+          <div class="step">
+            <span class="step-num">1</span>
+            <button class="btn btn-secondary btn-sm" (click)="downloadAgent()">DOWNLOAD AGENT.PY</button>
+          </div>
+          <div class="step">
+            <span class="step-num">2</span>
+            <p>Run this command on your laptop terminal:</p>
+            <div class="code-block">
+              python local_agent.py {{ currentJobId() }} "{{ currentJob()?.search_query }}"
+            </div>
+          </div>
+        </div>
+        <p class="small text-yellow">The agent will scrape locally and push the data back to this dashboard live!</p>
+      </div>
+
       <!-- PROGRESS CARD -->
       <div class="card progress-card">
         <h3 class="card-title">OPERATION STATUS</h3>
