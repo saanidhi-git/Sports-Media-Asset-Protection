@@ -175,7 +175,8 @@ def get_job_videos(
     db: Session = Depends(get_db),
 ):
     """List discovered videos for a specific job (for local agent to process)."""
-    videos = db.query(ScrapedVideo).filter(ScrapedVideo.scan_job_id == job_id).all()
+    from sqlalchemy.orm import joinedload
+    videos = db.query(ScrapedVideo).options(joinedload(ScrapedVideo.frames)).filter(ScrapedVideo.scan_job_id == job_id).all()
     return [
         {
             "id": v.id,
@@ -183,7 +184,7 @@ def get_job_videos(
             "platform_video_id": v.platform_video_id,
             "title": v.title,
             "url": v.url,
-            "frame_paths": v.frame_paths,
+            "frame_paths": [f.file_path for f in sorted(v.frames, key=lambda x: x.frame_number)] or v.frame_paths or [],
             "uploader": v.uploader
         }
         for v in videos
@@ -268,6 +269,7 @@ def get_enriched_results(
     Each result includes the scraped video metadata and matched asset name.
     """
     from app.services.review.queue import enrich_detection_result
+    from sqlalchemy.orm import joinedload
     
     job = db.query(ScanJob).filter(ScanJob.id == job_id, ScanJob.user_id == current_user.id).first()
     if not job:
@@ -275,7 +277,8 @@ def get_enriched_results(
 
     rows = (
         db.query(DetectionResult)
-        .join(ScrapedVideo, DetectionResult.scraped_video_id == ScrapedVideo.id)
+        .options(joinedload(DetectionResult.scraped_video).joinedload(ScrapedVideo.frames))
+        .filter(DetectionResult.scraped_video_id == ScrapedVideo.id)
         .filter(ScrapedVideo.scan_job_id == job_id)
         .order_by(DetectionResult.final_score.desc())
         .all()

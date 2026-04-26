@@ -40,68 +40,8 @@ def enrich_detection_result(db: Session, det: DetectionResult) -> EnrichedDetect
                 file_path=path
             ))
 
-    if det.matched_asset_id:
-        asset = db.query(Asset).filter(Asset.id == det.matched_asset_id).first()
-        if asset:
-            asset_name = asset.asset_name
-            asset_owner = asset.owner_company
-            
-            # Prepare all reference frames for the UI (sorted)
-            sorted_ref_frames = sorted(asset.frames, key=lambda x: x.frame_number)
-            for f in sorted_ref_frames:
-                ref_frames_data.append(AssetFrameMinimal(
-                    frame_number=f.frame_number,
-                    file_path=f.file_path,
-                    phash_value=f.phash_value,
-                    pdq_hash=f.pdq_hash
-                ))
-            
-            # Compute per-frame similarities for graphing
-            best_overall_dist = 64
-            for s_f in sorted_suspect_frames:
-                max_phash_sim = 0.0
-                max_pdq_sim = 0.0
-                
-                # pHash comparison
-                if s_f.phash_value:
-                    try:
-                        s_h = imagehash.hex_to_hash(s_f.phash_value)
-                        for r_f in asset.frames:
-                            if r_f.phash_value:
-                                r_h = imagehash.hex_to_hash(r_f.phash_value)
-                                dist = s_h - r_h
-                                sim = max(0.0, 1.0 - (dist / 64.0))
-                                if sim > max_phash_sim:
-                                    max_phash_sim = sim
-                                if dist < best_overall_dist:
-                                    best_overall_dist = dist
-                                    best_ref_frame_path = r_f.file_path
-                    except: pass
-
-                # PDQ comparison
-                if s_f.pdq_hash:
-                    try:
-                        s_v = int(s_f.pdq_hash, 16)
-                        for r_f in asset.frames:
-                            if r_f.pdq_hash:
-                                r_v = int(r_f.pdq_hash, 16)
-                                dist = bin(s_v ^ r_v).count('1')
-                                sim = max(0.0, 1.0 - (dist / 64.0)) # Use 64.0 as per reference script
-                                if sim > max_pdq_sim:
-                                    max_pdq_sim = sim
-                    except: pass
-
-                frame_similarities.append(float(round(max_phash_sim, 4)))
-                pdq_similarities.append(float(round(max_pdq_sim, 4)))
-
-            # Fallback for best_ref_frame_path
-            if not best_ref_frame_path and asset.frames:
-                best_ref_frame_path = asset.frames[0].file_path
-
-    # Extract frame URLs for the summary list
-    all_frame_urls = [f.file_path for f in sorted_suspect_frames]
-    if not all_frame_urls and sv.frame_paths:
-        all_frame_urls = sv.frame_paths
+    # Extract frame URLs for the summary list (AFTER FALLBACK)
+    all_frame_urls = [f.file_path for f in suspect_frames_data]
         
     import logging
     logger = logging.getLogger(__name__)

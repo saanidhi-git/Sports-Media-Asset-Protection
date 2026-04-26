@@ -268,7 +268,9 @@
         <div class="evidence-frames" *ngIf="r.frames && r.frames.length > 0">
           <div class="frames-title">EVIDENCE FRAMES</div>
           <div class="frames-grid">
-            <img *ngFor="let frame of r.frames.slice(0, 4)" [src]="getFrameUrl(frame)" class="evidence-img">
+            <ng-container *ngFor="let frame of r.frames.slice(0, 4)">
+              <img *ngIf="frame" [src]="getFrameUrl(frame)" class="evidence-img">
+            </ng-container>
           </div>
         </div>
 
@@ -277,7 +279,7 @@
           <div class="insight-header-small">AUDIENCE SIGNALS (Top Comments)</div>
           <div class="comments-scroll">
             <div *ngFor="let c of r.comments" class="comment-item">
-              <span class="comment-author">@{{ c.author }}</span>
+              <span class="comment-author">@{{ c.author || 'user' }}</span>
               <span class="comment-text">{{ c.text }}</span>
               <span class="comment-likes" *ngIf="c.like_count">❤️ {{ c.like_count }}</span>
             </div>
@@ -288,23 +290,23 @@
         <div class="score-section">
           <div class="score-row">
             <span class="score-label">pHash (w=0.20)</span>
-            <div class="score-bar-track"><div class="score-bar-fill phash" [style.width.%]="r.phash_score * 100"></div></div>
-            <span class="score-val">{{ r.phash_score.toFixed(3) }}</span>
+            <div class="score-bar-track"><div class="score-bar-fill phash" [style.width.%]="(r.phash_score || 0) * 100"></div></div>
+            <span class="score-val">{{ (r.phash_score || 0).toFixed(3) }}</span>
           </div>
           <div class="score-row">
             <span class="score-label">PDQ (w=0.30)</span>
-            <div class="score-bar-track"><div class="score-bar-fill pdq" [style.width.%]="r.pdq_score * 100"></div></div>
-            <span class="score-val">{{ r.pdq_score.toFixed(3) }}</span>
+            <div class="score-bar-track"><div class="score-bar-fill pdq" [style.width.%]="(r.pdq_score || 0) * 100"></div></div>
+            <span class="score-val">{{ (r.pdq_score || 0).toFixed(3) }}</span>
           </div>
           <div class="score-row">
             <span class="score-label">Audio (w=0.50)</span>
-            <div class="score-bar-track"><div class="score-bar-fill audio" [style.width.%]="r.audio_score * 100"></div></div>
-            <span class="score-val">{{ r.audio_score.toFixed(3) }}</span>
+            <div class="score-bar-track"><div class="score-bar-fill audio" [style.width.%]="(r.audio_score || 0) * 100"></div></div>
+            <span class="score-val">{{ (r.audio_score || 0).toFixed(3) }}</span>
           </div>
           <div class="score-row final">
             <span class="score-label">FINAL MATCH SCORE</span>
-            <div class="score-bar-track"><div class="score-bar-fill final-bar" [style.width.%]="r.final_score * 100"></div></div>
-            <span class="score-val">{{ r.final_score.toFixed(3) }}</span>
+            <div class="score-bar-track"><div class="score-bar-fill final-bar" [style.width.%]="(r.final_score || 0) * 100"></div></div>
+            <span class="score-val">{{ (r.final_score || 0).toFixed(3) }}</span>
           </div>
         </div>
 
