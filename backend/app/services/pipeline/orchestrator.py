@@ -269,8 +269,8 @@ def process_raw_external_item(
     audio_bytes: Optional[bytes] = None
 ):
     """
-    Handles raw bytes from a local agent. Generates fingerprints ON THE CLOUD
-    and then STOPS. Final verification happens when the user clicks the button.
+    Receives raw frames for an EXISTING video found during discovery.
+    Hashes them and stores them in the DB.
     """
     import threading
     from app.db.session import SessionLocal
@@ -283,17 +283,33 @@ def process_raw_external_item(
         import tempfile
         import os
 
-        logger.info(f"📥 EXTERNAL RAW DATA RECEIVED — Starting cloud extraction for Job {job_id}")
-        logger.info(f"   (Extraction handled by Edge Node / Local Agent)")
-        logger.info(f"──── 🎬 Extracting: {metadata['title'][:60]}")
+        # 1. Find the existing video record created during Discovery
+        scraped = db.query(ScrapedVideo).filter(
+            ScrapedVideo.scan_job_id == job_id,
+            ScrapedVideo.platform_video_id == metadata["platform_video_id"]
+        ).first()
+
+        if not scraped:
+            logger.warning(f"⚠️ Received frames for unknown video {metadata['platform_video_id']}. Creating new record.")
+            scraped = ScrapedVideo(
+                scan_job_id=job_id,
+                platform=metadata["platform"],
+                platform_video_id=metadata["platform_video_id"],
+                title=metadata["title"],
+                url=metadata["url"]
+            )
+            db.add(scraped)
+            db.commit()
+            db.refresh(scraped)
+
+        logger.info(f"📥 Received {len(frame_bytes_list)} frames for existing video: {scraped.title[:60]}")
 
         phashes = []
         pdq_hashes = []
         frame_urls = []
 
-        # 1. Process Frames: Hash & Upload
-        logger.info(f"   🎞️ Generating pHash & PDQ for {len(frame_bytes_list)} frames on cloud...")
-        for i, b in enumerate(frame_bytes_list):
+        # 2. Process Frames: Hash & Upload
+        for b in frame_bytes_list:
             nparr = np.frombuffer(b, np.uint8)
             frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             
@@ -307,34 +323,16 @@ def process_raw_external_item(
                     frame_urls.append(url)
                     os.remove(tmp.name)
 
-        # 2. Process Audio
-        final_audio_fp = None
+        # 3. Process Audio
         if audio_bytes:
-            logger.info(f"   🎵 Generating Audio Fingerprint on cloud...")
             with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as tmp:
                 tmp.write(audio_bytes)
                 tmp.flush()
-                final_audio_fp = get_audio_fp(tmp.name)
+                scraped.audio_fp = get_audio_fp(tmp.name)
                 os.remove(tmp.name)
 
-        # 3. Persist the scraped video record (Status: READY_FOR_VERIFICATION)
-        scraped = ScrapedVideo(
-            scan_job_id       = job_id,
-            platform          = metadata["platform"],
-            platform_video_id = metadata["platform_video_id"],
-            title             = metadata["title"],
-            description       = metadata.get("description", ""),
-            url               = metadata["url"],
-            frame_paths       = frame_urls,
-            uploader          = metadata.get("uploader"),
-            like_count        = metadata.get("like_count"),
-            view_count        = metadata.get("view_count"),
-            comments          = metadata.get("comments", []),
-        )
-        db.add(scraped)
-        db.commit()
-        db.refresh(scraped)
-
+        # 4. Save Frames to DB
+        scraped.frame_paths = frame_urls
         for i, f_url in enumerate(frame_urls):
             db.add(ScrapedFrame(
                 frame_number=i,
@@ -343,14 +341,22 @@ def process_raw_external_item(
                 pdq_hash=pdq_hashes[i] if i < len(pdq_hashes) else None,
                 scraped_video_id=scraped.id
             ))
+        
         db.commit()
 
-        # 4. Mark job as waiting for user verification
-        job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
-        if job:
-            job.status = "READY_FOR_VERIFICATION"
-            db.commit()
-            logger.info(f"✅ DATA READY — Job {job_id} is waiting for user to click VERIFY.")
+        # 5. Check if all videos for this job now have frames
+        all_videos = db.query(ScrapedVideo).filter(ScrapedVideo.scan_job_id == job_id).all()
+        ready_count = sum(1 for v in all_videos if v.frame_paths and len(v.frame_paths) > 0)
+        
+        if ready_count >= len(all_videos):
+            job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
+            if job:
+                job.status = "READY_FOR_VERIFICATION"
+                db.commit()
+                logger.info(f"🎯 ALL DATA RECEIVED — Job {job_id} is ready for Final Comparison!")
+        else:
+            logger.info(f"⌛ Progress: {ready_count}/{len(all_videos)} videos ready.")
+
     except Exception:
         db.rollback()
         logger.error(f"❌ process_raw_external_item failed:\n{traceback.format_exc()}")
