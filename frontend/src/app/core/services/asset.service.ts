@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpEvent } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface AssetRegisterResponse {
   status: string;
@@ -44,6 +45,7 @@ export interface Asset {
 })
 export class AssetService {
   private readonly http = inject(HttpClient);
+  private readonly apiUrl = environment.apiUrl;
 
   registerAsset(data: {
     assetName: string;
@@ -66,25 +68,25 @@ export class AssetService {
       formData.append('scoreboard_file', data.scoreboardFile);
     }
 
-    return this.http.post<any>('/api/assets/register', formData, {
+    return this.http.post<any>(`${this.apiUrl}/api/v1/assets/register`, formData, {
       reportProgress: true,
       observe: 'events'
     });
   }
 
   getAssets(): Observable<Asset[]> {
-    return this.http.get<Asset[]>('/api/assets/');
+    return this.http.get<Asset[]>(`${this.apiUrl}/api/v1/assets/`);
   }
 
   getAsset(id: number): Observable<Asset> {
-    return this.http.get<Asset>(`/api/assets/${id}`);
+    return this.http.get<Asset>(`${this.apiUrl}/api/v1/assets/${id}`);
   }
 
   getAssetFrames(id: number, page: number = 1, limit: number = 10): Observable<PaginatedFrames> {
-    return this.http.get<PaginatedFrames>(`/api/assets/${id}/frames?page=${page}&limit=${limit}`);
+    return this.http.get<PaginatedFrames>(`${this.apiUrl}/api/v1/assets/${id}/frames?page=${page}&limit=${limit}`);
   }
 
   deleteAsset(id: number): Observable<void> {
-    return this.http.delete<void>(`/api/assets/${id}`);
+    return this.http.delete<void>(`${this.apiUrl}/api/v1/assets/${id}`);
   }
 }

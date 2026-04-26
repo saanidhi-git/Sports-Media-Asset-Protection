@@ -1,118 +1,254 @@
-ERROR:    Exception in ASGI application
-Traceback (most recent call last):
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1128, in _rollback_impl
-    self.engine.dialect.do_rollback(self.connection)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 712, 
-in do_rollback
-    dbapi_connection.rollback()
-psycopg2.OperationalError: server closed the connection unexpectedly
-        This probably means the server terminated abnormally
-        before or while processing the request.
-server closed the connection unexpectedly
-        This probably means the server terminated abnormally
-        before or while processing the request.
-
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 415, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\fastapi\applications.py", line 1159, in __call__
-    await super().__call__(scope, receive, send)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\starlette\applications.py", line 90, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
-    raise exc
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
-    await self.simple_response(scope, receive, send, request_headers=headers)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, 
-in simple_response
-    await self.app(scope, receive, send)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
-    await self.app(scope, receive, send)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\starlette\routing.py", line 680, in app  
-    await route.handle(scope, receive, send)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
-    await self.app(scope, receive, send)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\fastapi\routing.py", line 134, in app    
-    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\fastapi\routing.py", line 116, in app    
-    async with AsyncExitStack() as request_stack:
-               ^^^^^^^^^^^^^^^^
-  File "C:\Users\Shree\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 754, in __aexit__
-    raise exc_details[1]
-  File "C:\Users\Shree\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 737, in __aexit__
-    cb_suppress = await cb(*exc_details)
-                  ^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\Shree\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 217, in __aexit__
-    await anext(self.gen)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\fastapi\concurrency.py", line 39, in contextmanager_in_threadpool
-    await anyio.to_thread.run_sync(
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2518, 
-in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1002, 
-in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\Shree\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 144, in __exit__
-    next(self.gen)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\app\api\deps.py", line 23, in get_db
-    db.close()
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2507, in close
-    self._close_impl(invalidate=False)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2576, in _close_impl
-    transaction.close(invalidate)
-  File "<string>", line 2, in close
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
-    ret_value = fn(self, *arg, **kw)
-                ^^^^^^^^^^^^^^^^^^^^
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1417, in close
-    transaction.close()
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2597, in close
-    self._do_close()
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2735, in _do_close
-    self._close_impl()
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2721, in _close_impl
-    self._connection_rollback_impl()
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2713, in _connection_rollback_impl
-    self.connection._rollback_impl()
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1130, in _rollback_impl
-    self._handle_dbapi_exception(e, None, None, None, None)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
-    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1128, in _rollback_impl
-    self.engine.dialect.do_rollback(self.connection)
-  File "D:\Projects\Sports-Media-Asset-Protection\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 712, 
-in do_rollback
-    dbapi_connection.rollback()
-sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) server closed the connection unexpectedly
-        This probably means the server terminated abnormally
-        before or while processing the request.
-server closed the connection unexpectedly
-        This probably means the server terminated abnormally
-        before or while processing the request.
-
-(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-04-26T03:56:00.812169768Z #9 56.95 Setting up libva-x11-2:amd64 (2.22.0-3) ...
+2026-04-26T03:56:00.812171958Z #9 56.96 Setting up libstdc++-14-dev:amd64 (14.2.0-19) ...
+2026-04-26T03:56:00.812174398Z #9 56.98 Setting up liblilv-0-0:amd64 (0.24.26-1) ...
+2026-04-26T03:56:00.924701573Z #9 57.00 Setting up libopenmpt0t64:amd64 (0.7.13-1+b1) ...
+2026-04-26T03:56:00.924721324Z #9 57.01 Setting up binutils-x86-64-linux-gnu (2.44-3) ...
+2026-04-26T03:56:00.924724714Z #9 57.03 Setting up libdrm-amdgpu1:amd64 (2.4.124-2) ...
+2026-04-26T03:56:00.924728134Z #9 57.04 Setting up cpp-x86-64-linux-gnu (4:14.2.0-1) ...
+2026-04-26T03:56:00.924731044Z #9 57.06 Setting up libgnutls30t64:amd64 (3.8.9-3+deb13u2) ...
+2026-04-26T03:56:00.924734734Z #9 57.08 Setting up fontconfig (2.15.0-2.3) ...
+2026-04-26T03:56:02.940225907Z #9 57.09 Regenerating fonts cache... done.
+2026-04-26T03:56:03.042734401Z #9 59.12 Setting up libzmq5:amd64 (4.3.5-1+b3) ...
+2026-04-26T03:56:03.042753062Z #9 59.13 Setting up libxi6:amd64 (2:1.8.2-1) ...
+2026-04-26T03:56:03.042756432Z #9 59.15 Setting up libpulse0:amd64 (17.0+dfsg1-2+b1) ...
+2026-04-26T03:56:03.042759042Z #9 59.17 Setting up libxcursor1:amd64 (1:1.2.3-1) ...
+2026-04-26T03:56:03.042761502Z #9 59.19 Setting up libpango-1.0-0:amd64 (1.56.3-1) ...
+2026-04-26T03:56:03.042764382Z #9 59.21 Setting up libdrm-intel1:amd64 (2.4.124-2) ...
+2026-04-26T03:56:03.182608081Z #9 59.23 Setting up binutils (2.44-3) ...
+2026-04-26T03:56:03.182623581Z #9 59.25 Setting up libavutil59:amd64 (7:7.1.3-0+deb13u1) ...
+2026-04-26T03:56:03.182626911Z #9 59.35 Setting up libcairo2:amd64 (1.18.4-1+b1) ...
+2026-04-26T03:56:03.285671067Z #9 59.37 Setting up dpkg-dev (1.22.22) ...
+2026-04-26T03:56:03.285694578Z #9 59.40 Setting up libpostproc58:amd64 (7:7.1.3-0+deb13u1) ...
+2026-04-26T03:56:03.285699058Z #9 59.42 Setting up libsphinxbase3t64:amd64 (0.8+5prealpha+1-21+b1) ...
+2026-04-26T03:56:03.285702288Z #9 59.43 Setting up libswresample5:amd64 (7:7.1.3-0+deb13u1) ...
+2026-04-26T03:56:03.285705588Z #9 59.45 Setting up libswscale8:amd64 (7:7.1.3-0+deb13u1) ...
+2026-04-26T03:56:03.462573786Z #9 59.48 Setting up libass9:amd64 (1:0.17.3-1+b1) ...
+2026-04-26T03:56:03.485894956Z #9 59.65 Setting up libtheoradec1:amd64 (1.2.0~alpha1+dfsg-6) ...
+2026-04-26T03:56:03.601021756Z #9 59.67 Setting up libsrt1.5-gnutls:amd64 (1.5.4-1) ...
+2026-04-26T03:56:03.601042296Z #9 59.69 Setting up cpp (4:14.2.0-1) ...
+2026-04-26T03:56:03.601045586Z #9 59.72 Setting up libcairo-gobject2:amd64 (1.18.4-1+b1) ...
+2026-04-26T03:56:03.601048446Z #9 59.73 Setting up gcc-14-x86-64-linux-gnu (14.2.0-19) ...
+2026-04-26T03:56:03.601051226Z #9 59.75 Setting up libpangoft2-1.0-0:amd64 (1.56.3-1) ...
+2026-04-26T03:56:03.601054066Z #9 59.77 Setting up libpangocairo-1.0-0:amd64 (1.56.3-1) ...
+2026-04-26T03:56:03.706089174Z #9 59.78 Setting up mesa-libgallium:amd64 (25.0.7-2) ...
+2026-04-26T03:56:03.706111464Z #9 59.80 Setting up gcc-x86-64-linux-gnu (4:14.2.0-1) ...
+2026-04-26T03:56:03.706115725Z #9 59.81 Setting up libgbm1:amd64 (25.0.7-2) ...
+2026-04-26T03:56:03.706117925Z #9 59.83 Setting up libgl1-mesa-dri:amd64 (25.0.7-2) ...
+2026-04-26T03:56:03.706120025Z #9 59.86 Setting up gcc-14 (14.2.0-19) ...
+2026-04-26T03:56:03.706122054Z #9 59.87 Setting up librsvg2-2:amd64 (2.60.0+dfsg-1) ...
+2026-04-26T03:56:03.811793515Z #9 59.91 Setting up libpocketsphinx3:amd64 (0.8+5prealpha+1-15+b4) ...
+2026-04-26T03:56:03.811813496Z #9 59.92 Setting up libavcodec61:amd64 (7:7.1.3-0+deb13u1) ...
+2026-04-26T03:56:03.811816926Z #9 59.94 Setting up g++-14-x86-64-linux-gnu (14.2.0-19) ...
+2026-04-26T03:56:03.811819756Z #9 59.96 Setting up g++-x86-64-linux-gnu (4:14.2.0-1) ...
+2026-04-26T03:56:03.811822836Z #9 59.98 Setting up g++-14 (14.2.0-19) ...
+2026-04-26T03:56:03.922796848Z #9 60.00 Setting up libsdl2-2.0-0:amd64 (2.32.4+dfsg-1) ...
+2026-04-26T03:56:03.922813909Z #9 60.02 Setting up libglx-mesa0:amd64 (25.0.7-2) ...
+2026-04-26T03:56:03.922817119Z #9 60.04 Setting up libglx0:amd64 (1.7.0-1+b2) ...
+2026-04-26T03:56:03.922819729Z #9 60.06 Setting up libavformat61:amd64 (7:7.1.3-0+deb13u1) ...
+2026-04-26T03:56:03.922822449Z #9 60.07 Setting up libchromaprint-tools (1.5.1-7) ...
+2026-04-26T03:56:03.922825619Z #9 60.09 Setting up gcc (4:14.2.0-1) ...
+2026-04-26T03:56:04.030362589Z #9 60.12 Setting up libgl1:amd64 (1.7.0-1+b2) ...
+2026-04-26T03:56:04.03037779Z #9 60.14 Setting up libavfilter10:amd64 (7:7.1.3-0+deb13u1) ...
+2026-04-26T03:56:04.03038097Z #9 60.16 Setting up g++ (4:14.2.0-1) ...
+2026-04-26T03:56:04.03038383Z #9 60.17 update-alternatives: using /usr/bin/g++ to provide /usr/bin/c++ (c++) in auto mode
+2026-04-26T03:56:04.03038628Z #9 60.18 Setting up build-essential (12.12) ...
+2026-04-26T03:56:04.03038857Z #9 60.20 Setting up libavdevice61:amd64 (7:7.1.3-0+deb13u1) ...
+2026-04-26T03:56:04.22926218Z #9 60.21 Setting up ffmpeg (7:7.1.3-0+deb13u1) ...
+2026-04-26T03:56:04.22928017Z #9 60.25 Processing triggers for libc-bin (2.41-12+deb13u2) ...
+2026-04-26T03:56:04.296059124Z #9 DONE 60.5s
+2026-04-26T03:56:04.413350689Z 
+2026-04-26T03:56:04.41337706Z #10 [stage-0 3/8] WORKDIR /app
+2026-04-26T03:56:04.4133824Z #10 DONE 0.1s
+2026-04-26T03:56:04.550373889Z 
+2026-04-26T03:56:04.5503937Z #11 [stage-0 4/8] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+2026-04-26T03:56:04.55039754Z #11 DONE 0.1s
+2026-04-26T03:56:04.728952803Z 
+2026-04-26T03:56:04.728984793Z #12 [stage-0 5/8] COPY pyproject.toml uv.lock ./
+2026-04-26T03:56:04.728991703Z #12 DONE 0.0s
+2026-04-26T03:56:04.728995913Z 
+2026-04-26T03:56:04.729000264Z #13 [stage-0 6/8] RUN uv pip install --system --no-cache -r pyproject.toml
+2026-04-26T03:56:04.79685808Z #13 0.218 Using Python 3.12.13 environment at: /usr/local
+2026-04-26T03:56:06.975127663Z #13 2.397 Resolved 113 packages in 2.17s
+2026-04-26T03:56:07.154251958Z #13 2.420 Downloading tiktoken (1.1MiB)
+2026-04-26T03:56:07.154289278Z #13 2.421 Downloading jsonschema-rs (3.7MiB)
+2026-04-26T03:56:07.154294568Z #13 2.421 Downloading grpcio-tools (2.5MiB)
+2026-04-26T03:56:07.154298808Z #13 2.421 Downloading pywavelets (4.3MiB)
+2026-04-26T03:56:07.154301559Z #13 2.421 Downloading scikit-learn (8.5MiB)
+2026-04-26T03:56:07.154304088Z #13 2.422 Downloading scipy (33.6MiB)
+2026-04-26T03:56:07.154306519Z #13 2.422 Downloading zstandard (5.3MiB)
+2026-04-26T03:56:07.154309349Z #13 2.422 Downloading pydantic-core (2.0MiB)
+2026-04-26T03:56:07.154311919Z #13 2.423 Downloading pillow (6.8MiB)
+2026-04-26T03:56:07.15434436Z #13 2.423 Downloading google-api-python-client (14.3MiB)
+2026-04-26T03:56:07.15434734Z #13 2.423 Downloading numpy (15.9MiB)
+2026-04-26T03:56:07.1543498Z #13 2.424 Downloading opencv-python-headless (57.6MiB)
+2026-04-26T03:56:07.15435236Z #13 2.424 Downloading grpcio (6.4MiB)
+2026-04-26T03:56:07.15435514Z #13 2.424 Downloading sqlalchemy (3.2MiB)
+2026-04-26T03:56:07.1543576Z #13 2.425 Downloading cryptography (4.3MiB)
+2026-04-26T03:56:07.15436013Z #13 2.425 Downloading uvloop (4.2MiB)
+2026-04-26T03:56:07.15436262Z #13 2.425 Downloading psycopg2-binary (4.1MiB)
+2026-04-26T03:56:07.1543652Z #13 2.426 Downloading yt-dlp (3.2MiB)
+2026-04-26T03:56:07.411512554Z #13 2.833  Downloaded tiktoken
+2026-04-26T03:56:07.590132519Z #13 3.012    Building forbiddenfruit==0.1.4
+2026-04-26T03:56:07.739836705Z #13 3.057  Downloaded pydantic-core
+2026-04-26T03:56:07.739855695Z #13 3.161  Downloaded grpcio-tools
+2026-04-26T03:56:07.935489258Z #13 3.223    Building pdqhash==0.2.8
+2026-04-26T03:56:07.935508958Z #13 3.357  Downloaded jsonschema-rs
+2026-04-26T03:56:08.04266813Z #13 3.449  Downloaded pywavelets
+2026-04-26T03:56:08.04268554Z #13 3.451  Downloaded psycopg2-binary
+2026-04-26T03:56:08.042688511Z #13 3.464  Downloaded sqlalchemy
+2026-04-26T03:56:08.155229656Z #13 3.486  Downloaded uvloop
+2026-04-26T03:56:08.155246326Z #13 3.509  Downloaded cryptography
+2026-04-26T03:56:08.155248996Z #13 3.577  Downloaded zstandard
+2026-04-26T03:56:08.277548427Z #13 3.699  Downloaded grpcio
+2026-04-26T03:56:08.449121113Z #13 3.720  Downloaded pillow
+2026-04-26T03:56:08.470345659Z #13 3.892       Built forbiddenfruit==0.1.4
+2026-04-26T03:56:08.693656072Z #13 3.965  Downloaded scikit-learn
+2026-04-26T03:56:08.797959985Z #13 4.220  Downloaded yt-dlp
+2026-04-26T03:56:09.008253444Z #13 4.255  Downloaded numpy
+2026-04-26T03:56:09.008276115Z #13 4.280  Downloaded google-api-python-client
+2026-04-26T03:56:09.138211526Z #13 4.560  Downloaded opencv-python-headless
+2026-04-26T03:56:09.302884287Z #13 4.725  Downloaded scipy
+2026-04-26T03:56:16.227136275Z #13 11.65       Built pdqhash==0.2.8
+2026-04-26T03:56:16.382757605Z #13 11.65 Prepared 112 packages in 9.25s
+2026-04-26T03:56:16.981187742Z #13 12.40 Installed 113 packages in 748ms
+2026-04-26T03:56:17.135624238Z #13 12.40  + alembic==1.18.4
+2026-04-26T03:56:17.135641129Z #13 12.40  + annotated-doc==0.0.4
+2026-04-26T03:56:17.135644969Z #13 12.40  + annotated-types==0.7.0
+2026-04-26T03:56:17.135648399Z #13 12.40  + anyio==4.13.0
+2026-04-26T03:56:17.135651509Z #13 12.40  + bcrypt==3.2.0
+2026-04-26T03:56:17.135654579Z #13 12.40  + blockbuster==1.5.26
+2026-04-26T03:56:17.135657759Z #13 12.40  + certifi==2026.4.22
+2026-04-26T03:56:17.135661429Z #13 12.40  + cffi==2.0.0
+2026-04-26T03:56:17.135664549Z #13 12.40  + charset-normalizer==3.4.7
+2026-04-26T03:56:17.135667609Z #13 12.40  + click==8.3.3
+2026-04-26T03:56:17.135670749Z #13 12.40  + cloudinary==1.44.2
+2026-04-26T03:56:17.135673819Z #13 12.40  + cloudpickle==3.1.2
+2026-04-26T03:56:17.1356852Z #13 12.40  + croniter==6.2.2
+2026-04-26T03:56:17.135687369Z #13 12.40  + cryptography==46.0.7
+2026-04-26T03:56:17.1356894Z #13 12.40  + dnspython==2.8.0
+2026-04-26T03:56:17.1356914Z #13 12.40  + ecdsa==0.19.2
+2026-04-26T03:56:17.13569374Z #13 12.40  + email-validator==2.3.0
+2026-04-26T03:56:17.13569568Z #13 12.40  + fastapi==0.136.1
+2026-04-26T03:56:17.13569766Z #13 12.40  + forbiddenfruit==0.1.4
+2026-04-26T03:56:17.13569966Z #13 12.40  + google-api-core==2.30.3
+2026-04-26T03:56:17.13570176Z #13 12.40  + google-api-python-client==2.194.0
+2026-04-26T03:56:17.13570372Z #13 12.40  + google-auth==2.49.2
+2026-04-26T03:56:17.13570569Z #13 12.40  + google-auth-httplib2==0.3.1
+2026-04-26T03:56:17.13570763Z #13 12.40  + googleapis-common-protos==1.74.0
+2026-04-26T03:56:17.13570961Z #13 12.40  + greenlet==3.4.0
+2026-04-26T03:56:17.1357119Z #13 12.40  + grpcio==1.78.0
+2026-04-26T03:56:17.13571397Z #13 12.40  + grpcio-health-checking==1.78.0
+2026-04-26T03:56:17.13572512Z #13 12.40  + grpcio-tools==1.78.0
+2026-04-26T03:56:17.13572727Z #13 12.40  + h11==0.16.0
+2026-04-26T03:56:17.13572923Z #13 12.40  + httpcore==1.0.9
+2026-04-26T03:56:17.135731141Z #13 12.40  + httplib2==0.31.2
+2026-04-26T03:56:17.135733141Z #13 12.40  + httptools==0.7.1
+2026-04-26T03:56:17.13573509Z #13 12.40  + httpx==0.28.1
+2026-04-26T03:56:17.135737181Z #13 12.40  + idna==3.13
+2026-04-26T03:56:17.135739171Z #13 12.40  + imagehash==4.3.2
+2026-04-26T03:56:17.135741191Z #13 12.40  + importlib-metadata==8.7.1
+2026-04-26T03:56:17.135743261Z #13 12.40  + joblib==1.5.3
+2026-04-26T03:56:17.135745231Z #13 12.40  + jsonpatch==1.33
+2026-04-26T03:56:17.135747191Z #13 12.40  + jsonpointer==3.1.1
+2026-04-26T03:56:17.135749131Z #13 12.40  + jsonschema-rs==0.44.1
+2026-04-26T03:56:17.135751121Z #13 12.40  + langchain-core==1.3.2
+2026-04-26T03:56:17.135756061Z #13 12.40  + langchain-protocol==0.0.12
+2026-04-26T03:56:17.135758121Z #13 12.40  + langgraph==1.1.9
+2026-04-26T03:56:17.135760111Z #13 12.40  + langgraph-api==0.8.1
+2026-04-26T03:56:17.135762071Z #13 12.40  + langgraph-checkpoint==4.0.2
+2026-04-26T03:56:17.135764021Z #13 12.40  + langgraph-cli==0.4.24
+2026-04-26T03:56:17.135767471Z #13 12.40  + langgraph-prebuilt==1.0.11
+2026-04-26T03:56:17.135770611Z #13 12.40  + langgraph-runtime-inmem==0.28.0
+2026-04-26T03:56:17.135781082Z #13 12.40  + langgraph-sdk==0.3.13
+2026-04-26T03:56:17.135791272Z #13 12.40  + langsmith==0.7.36
+2026-04-26T03:56:17.135795702Z #13 12.40  + mako==1.3.11
+2026-04-26T03:56:17.135799532Z #13 12.40  + markupsafe==3.0.3
+2026-04-26T03:56:17.135803062Z #13 12.40  + numpy==2.4.4
+2026-04-26T03:56:17.135806952Z #13 12.40  + opencv-python-headless==4.13.0.92
+2026-04-26T03:56:17.135810592Z #13 12.40  + opentelemetry-api==1.41.1
+2026-04-26T03:56:17.135814342Z #13 12.40  + opentelemetry-exporter-otlp-proto-common==1.41.1
+2026-04-26T03:56:17.135818302Z #13 12.40  + opentelemetry-exporter-otlp-proto-http==1.41.1
+2026-04-26T03:56:17.135837603Z #13 12.40  + opentelemetry-proto==1.41.1
+2026-04-26T03:56:17.135842123Z #13 12.40  + opentelemetry-sdk==1.41.1
+2026-04-26T03:56:17.135845763Z #13 12.40  + opentelemetry-semantic-conventions==0.62b1
+2026-04-26T03:56:17.135848303Z #13 12.40  + orjson==3.11.8
+2026-04-26T03:56:17.135850883Z #13 12.40  + ormsgpack==1.12.2
+2026-04-26T03:56:17.135853313Z #13 12.40  + packaging==26.2
+2026-04-26T03:56:17.135855903Z #13 12.40  + passlib==1.7.4
+2026-04-26T03:56:17.135861923Z #13 12.41  + pathspec==1.1.0
+2026-04-26T03:56:17.135864513Z #13 12.41  + pdqhash==0.2.8
+2026-04-26T03:56:17.135866993Z #13 12.41  + pillow==12.2.0
+2026-04-26T03:56:17.135878513Z #13 12.41  + proto-plus==1.27.2
+2026-04-26T03:56:17.135881134Z #13 12.41  + protobuf==6.33.6
+2026-04-26T03:56:17.135883704Z #13 12.41  + psycopg2-binary==2.9.12
+2026-04-26T03:56:17.135887254Z #13 12.41  + pyasn1==0.6.3
+2026-04-26T03:56:17.135891404Z #13 12.41  + pyasn1-modules==0.4.2
+2026-04-26T03:56:17.135895794Z #13 12.41  + pycparser==3.0
+2026-04-26T03:56:17.135899744Z #13 12.41  + pydantic==2.13.3
+2026-04-26T03:56:17.135904094Z #13 12.41  + pydantic-core==2.46.3
+2026-04-26T03:56:17.135908104Z #13 12.41  + pydantic-settings==2.14.0
+2026-04-26T03:56:17.135912064Z #13 12.41  + pyjwt==2.12.1
+2026-04-26T03:56:17.135916324Z #13 12.41  + pyparsing==3.3.2
+2026-04-26T03:56:17.135920765Z #13 12.41  + python-dateutil==2.9.0.post0
+2026-04-26T03:56:17.135923294Z #13 12.41  + python-dotenv==1.2.2
+2026-04-26T03:56:17.135925774Z #13 12.41  + python-jose==3.5.0
+2026-04-26T03:56:17.135928305Z #13 12.41  + python-multipart==0.0.26
+2026-04-26T03:56:17.135930795Z #13 12.41  + pywavelets==1.9.0
+2026-04-26T03:56:17.135933275Z #13 12.41  + pyyaml==6.0.3
+2026-04-26T03:56:17.135949115Z #13 12.41  + regex==2026.4.4
+2026-04-26T03:56:17.135954005Z #13 12.41  + requests==2.33.1
+2026-04-26T03:56:17.135958115Z #13 12.41  + requests-toolbelt==1.0.0
+2026-04-26T03:56:17.135962615Z #13 12.41  + rsa==4.9.1
+2026-04-26T03:56:17.135966995Z #13 12.41  + scikit-learn==1.8.0
+2026-04-26T03:56:17.135970746Z #13 12.41  + scipy==1.17.1
+2026-04-26T03:56:17.135973235Z #13 12.41  + setuptools==82.0.1
+2026-04-26T03:56:17.135975706Z #13 12.41  + six==1.17.0
+2026-04-26T03:56:17.135981446Z #13 12.41  + sqlalchemy==2.0.49
+2026-04-26T03:56:17.135984066Z #13 12.41  + sse-starlette==3.3.4
+2026-04-26T03:56:17.135986606Z #13 12.41  + starlette==1.0.0
+2026-04-26T03:56:17.135989036Z #13 12.41  + structlog==25.5.0
+2026-04-26T03:56:17.135991536Z #13 12.41  + tavily-python==0.7.23
+2026-04-26T03:56:17.135993936Z #13 12.41  + tenacity==9.1.4
+2026-04-26T03:56:17.135996386Z #13 12.41  + threadpoolctl==3.6.0
+2026-04-26T03:56:17.135998816Z #13 12.41  + tiktoken==0.12.0
+2026-04-26T03:56:17.136001296Z #13 12.41  + truststore==0.10.4
+2026-04-26T03:56:17.136003736Z #13 12.41  + typing-extensions==4.15.0
+2026-04-26T03:56:17.136006266Z #13 12.41  + typing-inspection==0.4.2
+2026-04-26T03:56:17.136008686Z #13 12.41  + uritemplate==4.2.0
+2026-04-26T03:56:17.136011166Z #13 12.41  + urllib3==2.6.3
+2026-04-26T03:56:17.136013576Z #13 12.41  + uuid-utils==0.14.1
+2026-04-26T03:56:17.136015996Z #13 12.41  + uvicorn==0.46.0
+2026-04-26T03:56:17.136018467Z #13 12.41  + uvloop==0.22.1
+2026-04-26T03:56:17.136020947Z #13 12.41  + watchfiles==1.1.1
+2026-04-26T03:56:17.136023387Z #13 12.41  + xxhash==3.7.0
+2026-04-26T03:56:17.136025917Z #13 12.41  + yt-dlp==2026.3.17
+2026-04-26T03:56:17.136028337Z #13 12.41  + zipp==3.23.1
+2026-04-26T03:56:17.136030777Z #13 12.41  + zstandard==0.25.0
+2026-04-26T03:56:17.136033617Z #13 12.41 warning: The package `langgraph-cli==0.4.24` does not have an extra named `sdk`
+2026-04-26T03:56:17.136036167Z #13 12.41 warning: The package `langgraph-cli==0.4.24` does not have an extra named `api`
+2026-04-26T03:56:20.232894852Z #13 DONE 15.7s
+2026-04-26T03:56:20.385789345Z 
+2026-04-26T03:56:20.385813665Z #14 [stage-0 7/8] COPY . .
+2026-04-26T03:56:20.408516412Z #14 DONE 0.2s
+2026-04-26T03:56:20.509139727Z 
+2026-04-26T03:56:20.509166978Z #15 [stage-0 8/8] RUN mkdir -p uploads
+2026-04-26T03:56:20.509173938Z #15 DONE 0.1s
+2026-04-26T03:56:20.509179798Z 
+2026-04-26T03:56:20.509186808Z #16 exporting to docker image format
+2026-04-26T03:56:20.65965152Z #16 exporting layers
+2026-04-26T03:56:44.831358141Z #16 exporting layers 24.3s done
+2026-04-26T03:56:44.995397298Z #16 exporting manifest sha256:d658858833be64439c9df6874f3e63b4531b10f1156e48200d9d1a3fc03deccd done
+2026-04-26T03:56:44.995424269Z #16 exporting config sha256:45c6a206e9d3b511ab15f882b2f105e294e5820973a93f395dd0b44f5024c614 done
+2026-04-26T03:56:46.533659182Z #16 DONE 26.0s
+2026-04-26T03:56:46.684152054Z 
+2026-04-26T03:56:46.684180715Z #17 exporting cache to client directory
+2026-04-26T03:56:46.684185505Z #17 preparing build cache for export
+2026-04-26T03:56:59.10673879Z #17 writing cache image manifest sha256:c25acd1786d04db178dfd735875489a16d32d00bd3929659cbd59546e351a11c 0.0s done
+2026-04-26T03:56:59.106764191Z #17 DONE 12.5s
+2026-04-26T03:56:59.862821567Z Pushing image to registry...
+2026-04-26T03:57:13.617880742Z ==> Deploying...
+2026-04-26T03:57:13.850236018Z ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+2026-04-26T03:57:10.265188388Z Upload succeeded
+2026-04-26T03:57:50.958457497Z 📡 DATABASE: Using Supabase/Cloud URL
+2026-04-26T03:57:51.29206543Z INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+2026-04-26T03:57:51.292143192Z INFO  [alembic.runtime.migration] Will assume transactional DDL.

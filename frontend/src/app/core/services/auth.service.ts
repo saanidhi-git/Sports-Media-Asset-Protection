@@ -2,6 +2,7 @@ import { Injectable, signal, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface Token {
   access_token: string;
@@ -21,6 +22,7 @@ export interface User {
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly apiUrl = environment.apiUrl;
   
   // Reactive state for the current token and user
   private readonly token = signal<string | null>(localStorage.getItem('access_token'));
@@ -40,7 +42,7 @@ export class AuthService {
       .set('username', email)
       .set('password', password);
 
-    return this.http.post<Token>('/api/login/access-token', body.toString(), {
+    return this.http.post<Token>(`${this.apiUrl}/api/v1/login/access-token`, body.toString(), {
       headers: new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded')
     }).pipe(
       tap(response => {
@@ -50,7 +52,7 @@ export class AuthService {
   }
 
   getMe(): Observable<User> {
-    return this.http.get<User>('/api/users/me').pipe(
+    return this.http.get<User>(`${this.apiUrl}/api/v1/users/me`).pipe(
       tap(user => this.currentUser.set(user))
     );
   }
@@ -60,7 +62,7 @@ export class AuthService {
     const operatorId = `JH-${Math.floor(1000 + Math.random() * 9000)}`;
     const os = (window.navigator as any).userAgentData?.platform || window.navigator.platform;
 
-    return this.http.post<User>('/api/users/register', {
+    return this.http.post<User>(`${this.apiUrl}/api/v1/users/register`, {
       email,
       password,
       operator_id: operatorId,

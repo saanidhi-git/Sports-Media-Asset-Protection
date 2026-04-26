@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface AssetFrameMinimal {
   frame_number: number;
@@ -53,25 +54,26 @@ export interface DetectionResult {
 })
 export class PipelineService {
   private readonly http = inject(HttpClient);
+  private readonly apiUrl = environment.apiUrl;
 
   getStats(): Observable<any> {
-    return this.http.get<any>('/api/pipeline/stats');
+    return this.http.get<any>(`${this.apiUrl}/api/v1/pipeline/stats`);
   }
 
   getReviewQueue(): Observable<DetectionResult[]> {
-    return this.http.get<DetectionResult[]>('/api/review/queue');
+    return this.http.get<DetectionResult[]>(`${this.apiUrl}/api/v1/review/queue`);
   }
 
   getReviewCase(id: number): Observable<DetectionResult> {
-    return this.http.get<DetectionResult>(`/api/review/${id}`);
+    return this.http.get<DetectionResult>(`${this.apiUrl}/api/v1/review/${id}`);
   }
 
   getHealthMatrix(): Observable<any> {
-    return this.http.get<any>('/api/health/matrix');
+    return this.http.get<any>(`${this.apiUrl}/health/matrix`);
   }
 
   sendNotice(detectionId: number, recipientEmail: string, subject: string, content: string, attachments?: string[]): Observable<any> {
-    return this.http.post<any>('/api/notice/send', {
+    return this.http.post<any>(`${this.apiUrl}/api/v1/notice/send`, {
       detection_id: detectionId,
       recipient_email: recipientEmail,
       subject: subject,
