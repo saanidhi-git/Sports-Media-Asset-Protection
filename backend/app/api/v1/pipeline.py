@@ -62,12 +62,13 @@ def push_external_raw(
     frame_bytes = [f.file.read() for f in frames]
     audio_bytes = audio.file.read() if audio else None
 
+    # Extraction & fingerprinting can now be sent directly from agent
     background_tasks.add_task(
         process_raw_external_item,
         job.id,
         metadata,
         frame_bytes,
-        audio_bytes
+        audio_bytes,
     )
     return {"status": "accepted", "job_id": job.id}
 

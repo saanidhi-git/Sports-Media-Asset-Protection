@@ -305,7 +305,8 @@ def process_raw_external_item(
                 tmp.write(audio_bytes)
                 tmp.flush()
                 tmp.close()
-                audio_url = upload_image(tmp.name, folder="sports-guardian/raw_audio")
+                from app.services.storage.cloudinary_client import upload_auto
+                audio_url = upload_auto(tmp.name, folder="sports-guardian/raw_audio")
                 scraped.audio_url = audio_url
                 os.remove(tmp.name)
 
