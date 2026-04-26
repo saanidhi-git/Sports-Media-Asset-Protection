@@ -2,29 +2,47 @@
 import os
 import sys
 import subprocess
-import requests
 import tempfile
 import json
-import cv2
 import logging
 
-# ── AUTO-INSTALL YT-DLP ──────────────────────────────────────────────────
+# ── AUTO-INSTALL DEPENDENCIES ──────────────────────────────────────────
 def ensure_dependencies():
+    deps = ["yt-dlp", "opencv-python", "requests"]
+    missing = []
+    
+    # Check yt-dlp
     try:
         import yt_dlp
-        return True
     except ImportError:
-        print("📦 yt-dlp missing. Attempting auto-install...")
+        missing.append("yt-dlp")
+        
+    # Check requests
+    try:
+        import requests
+    except ImportError:
+        missing.append("requests")
+        
+    # Check opencv
+    try:
+        import cv2
+    except ImportError:
+        missing.append("opencv-python")
+
+    if missing:
+        print(f"📦 Missing dependencies: {', '.join(missing)}. Attempting auto-install...")
         try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "yt-dlp"])
-            print("✅ yt-dlp installed successfully.")
+            subprocess.check_call([sys.executable, "-m", "pip", "install"] + missing)
+            print("✅ Dependencies installed successfully.")
             return True
         except Exception as e:
             print(f"❌ Auto-install failed: {e}")
+            print("Please run: pip install yt-dlp opencv-python requests")
             return False
+    return True
 
 # ── CONFIGURATION ──────────────────────────────────────────────────────────
-# IMPORTANT: Update this to your live Render backend URL!
+# IMPORTANT: The server automatically updates this URL when you download it!
 API_BASE_URL = "https://your-app-on-render.com/api/v1" 
 EXTERNAL_AGENT_KEY = "dev-key-123"
 # ───────────────────────────────────────────────────────────────────────────
@@ -33,6 +51,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(
 logger = logging.getLogger("LocalAgent")
 
 def fetch_videos_to_process(job_id):
+    import requests
     """Asks Render for the list of URLs found during the Discovery phase."""
     url = f"{API_BASE_URL}/pipeline/jobs/{job_id}/videos"
     try:
@@ -47,6 +66,7 @@ def fetch_videos_to_process(job_id):
         return []
 
 def download_and_extract(video_info, tmp_dir):
+    import cv2
     """Downloads first 60s and extracts 8 frames + audio for a specific video."""
     url = video_info["url"]
     vid = video_info["platform_video_id"]
@@ -92,9 +112,9 @@ def download_and_extract(video_info, tmp_dir):
 
 def process_job(job_id):
     if not ensure_dependencies():
-        logger.error("Could not verify/install yt-dlp. Please install it manually.")
-        return
+        sys.exit(1)
 
+    import requests
     videos = fetch_videos_to_process(job_id)
     if not videos:
         logger.warning(f"No videos found for Job #{job_id}. Did Discovery finish?")

@@ -103,8 +103,10 @@ def start_scan(
     return job
 
 
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, UploadFile, File, Form, Request, Response
+
 @router.get("/download-agent")
-def download_agent():
+def download_agent(request: Request):
     """Download the local agent script for hybrid scanning."""
     agent_path = os.path.join(os.getcwd(), "local_agent.py")
     if not os.path.exists(agent_path):
@@ -114,10 +116,25 @@ def download_agent():
     if not os.path.exists(agent_path):
         raise HTTPException(status_code=404, detail="local_agent.py not found on server.")
 
-    return FileResponse(
-        path=agent_path,
-        filename="local_agent.py",
-        media_type="application/octet-stream"
+    with open(agent_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # DYNAMIC INJECTION: Determine the API base URL from the request
+    base_url = str(request.base_url).rstrip("/")
+    if "/api/v1" not in base_url:
+        api_base = f"{base_url}{settings.API_V1_STR}"
+    else:
+        api_base = base_url
+
+    content = content.replace(
+        'API_BASE_URL = "https://your-app-on-render.com/api/v1"', 
+        f'API_BASE_URL = "{api_base}"'
+    )
+
+    return Response(
+        content=content,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": "attachment; filename=local_agent.py"}
     )
 
 @router.get("/jobs/{job_id}/videos")
