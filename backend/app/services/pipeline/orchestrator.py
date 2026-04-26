@@ -43,6 +43,7 @@ def _make_score_fn():
                 p   = phash_similarity(phashes, ref_ph)
                 pdq = pdq_similarity(pdq_hashes, ref_pdq)
                 combined = (p * 0.5) + (pdq * 0.5)
+
                 if combined > best:
                     best = combined
         finally:
@@ -303,12 +304,12 @@ def process_raw_external_item(
             db.commit()
             db.refresh(scraped)
         else:
-            # Update existing record with rich metadata from agent
-            scraped.description = metadata.get("description", scraped.description)
-            scraped.uploader = metadata.get("uploader", scraped.uploader)
-            scraped.like_count = metadata.get("like_count", scraped.like_count)
-            scraped.view_count = metadata.get("view_count", scraped.view_count)
-            scraped.comments = metadata.get("comments", scraped.comments)
+            # Update existing record with rich metadata from agent (don't overwrite with None)
+            if metadata.get("description"): scraped.description = metadata["description"]
+            if metadata.get("uploader"): scraped.uploader = metadata["uploader"]
+            if metadata.get("like_count"): scraped.like_count = metadata["like_count"]
+            if metadata.get("view_count"): scraped.view_count = metadata["view_count"]
+            if metadata.get("comments"): scraped.comments = metadata["comments"]
             db.commit()
 
         # 2. Store Raw Audio on Cloudinary

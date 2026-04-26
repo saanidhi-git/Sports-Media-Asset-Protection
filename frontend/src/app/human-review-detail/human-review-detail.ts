@@ -128,6 +128,8 @@ export class HumanReviewDetail implements OnInit {
   }
 
   prepareCharts(r: DetectionResult) {
+    if (!r.frame_similarities || !r.pdq_similarities) return;
+
     // Line Chart
     this.lineChartData = {
       labels: r.frame_similarities.map((_, i) => `F${i + 1}`),

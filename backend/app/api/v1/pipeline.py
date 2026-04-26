@@ -148,7 +148,12 @@ def download_agent(request: Request, job_id: Optional[int] = None, db: Session =
                 "platform": v.platform,
                 "platform_video_id": v.platform_video_id,
                 "title": v.title,
-                "url": v.url
+                "url": v.url,
+                "description": v.description,
+                "uploader": v.uploader,
+                "like_count": v.like_count,
+                "view_count": v.view_count,
+                "comments": v.comments or []
             })
         
         # Replace the placeholder in the script
