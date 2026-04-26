@@ -1,10 +1,15 @@
 """Pipeline — scan initiation, job status polling, enriched result retrieval."""
+import json
+import os
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
+from app.core.config import settings
+from app.core.job_logging import JOB_LOGS_DIR
 from app.db.models.asset import Asset
 from app.db.models.detection_result import DetectionResult
 from app.db.models.scan_job import ScanJob
@@ -17,9 +22,15 @@ from app.schemas.pipeline import (
     ScanRequest,
     ExternalPushRequest,
 )
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, UploadFile, File, Form
-from app.services.pipeline.orchestrator import run_pipeline_job, process_external_results, process_raw_external_item, verify_scan_results
-import json
+from app.services.pipeline.orchestrator import (
+    run_pipeline_job, 
+    process_external_results, 
+    process_raw_external_item, 
+    verify_scan_results
+)
+
+router = APIRouter(prefix="/pipeline", tags=["Pipeline"])
+
 
 @router.post("/external-push-raw", status_code=status.HTTP_202_ACCEPTED)
 def push_external_raw(
@@ -53,7 +64,6 @@ def push_external_raw(
 
     background_tasks.add_task(
         process_raw_external_item,
-        db,
         job.id,
         metadata,
         frame_bytes,
@@ -93,8 +103,6 @@ def start_scan(
     return job
 
 
-from fastapi.responses import FileResponse
-
 @router.get("/download-agent")
 def download_agent():
     """Download the local agent script for hybrid scanning."""
@@ -103,6 +111,9 @@ def download_agent():
         # Fallback for different directory structures
         agent_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "local_agent.py")
     
+    if not os.path.exists(agent_path):
+        raise HTTPException(status_code=404, detail="local_agent.py not found on server.")
+
     return FileResponse(
         path=agent_path,
         filename="local_agent.py",
@@ -129,7 +140,7 @@ def trigger_verification(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found.")
 
-    background_tasks.add_task(verify_scan_results, db, job_id)
+    background_tasks.add_task(verify_scan_results, job_id)
     return {"status": "verification_started"}
 
 @router.post("/external-push", status_code=status.HTTP_202_ACCEPTED)
@@ -153,7 +164,6 @@ def push_external_results(
 
     background_tasks.add_task(
         process_external_results,
-        db,
         job.id,
         items_dict,
     )

@@ -226,19 +226,21 @@ def process_scraped_item(db: Session, job_id: int, item: dict):
         ai_reason=ai_reason,
     )
 
-def process_external_results(db: Session, job_id: int, items: list[dict]):
+def process_external_results(job_id: int, items: list[dict]):
     """
     Entry point for results pushed by an external local agent.
     """
     import threading
+    from app.db.session import SessionLocal
     threading.current_thread().job_id = job_id
     
-    job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
-    if not job:
-        logger.error(f"❌ process_external_results: ScanJob {job_id} not found.")
-        return
-
+    db = SessionLocal()
     try:
+        job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
+        if not job:
+            logger.error(f"❌ process_external_results: ScanJob {job_id} not found.")
+            return
+
         job.status = "PROCESSING"
         db.commit()
 
@@ -257,10 +259,10 @@ def process_external_results(db: Session, job_id: int, items: list[dict]):
         db.commit()
         logger.error(f"❌ External processing failed:\n{traceback.format_exc()}")
     finally:
+        db.close()
         threading.current_thread().job_id = None
 
 def process_raw_external_item(
-    db: Session, 
     job_id: int, 
     metadata: dict, 
     frame_bytes_list: list[bytes], 
@@ -271,94 +273,105 @@ def process_raw_external_item(
     and then STOPS. Final verification happens when the user clicks the button.
     """
     import threading
+    from app.db.session import SessionLocal
     threading.current_thread().job_id = job_id
     
-    from app.services.fingerprint.generator import get_phash, get_pdq, get_audio_fp
-    from app.services.storage.cloudinary_client import upload_image
-    import tempfile
-    import os
+    db = SessionLocal()
+    try:
+        from app.services.fingerprint.generator import get_phash, get_pdq, get_audio_fp
+        from app.services.storage.cloudinary_client import upload_image
+        import tempfile
+        import os
 
-    logger.info(f"📥 EXTERNAL RAW DATA RECEIVED — Starting cloud extraction for Job {job_id}")
-    logger.info(f"   (Extraction handled by Edge Node / Local Agent)")
-    logger.info(f"──── 🎬 Extracting: {metadata['title'][:60]}")
+        logger.info(f"📥 EXTERNAL RAW DATA RECEIVED — Starting cloud extraction for Job {job_id}")
+        logger.info(f"   (Extraction handled by Edge Node / Local Agent)")
+        logger.info(f"──── 🎬 Extracting: {metadata['title'][:60]}")
 
-    phashes = []
-    pdq_hashes = []
-    frame_urls = []
+        phashes = []
+        pdq_hashes = []
+        frame_urls = []
 
-    # 1. Process Frames: Hash & Upload
-    logger.info(f"   🎞️ Generating pHash & PDQ for {len(frame_bytes_list)} frames on cloud...")
-    for i, b in enumerate(frame_bytes_list):
-        nparr = np.frombuffer(b, np.uint8)
-        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        if frame is not None:
-            phashes.append(get_phash(frame))
-            pdq_hashes.append(get_pdq(frame))
+        # 1. Process Frames: Hash & Upload
+        logger.info(f"   🎞️ Generating pHash & PDQ for {len(frame_bytes_list)} frames on cloud...")
+        for i, b in enumerate(frame_bytes_list):
+            nparr = np.frombuffer(b, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-                cv2.imwrite(tmp.name, frame)
-                url = upload_image(tmp.name, folder="sports-guardian/scraped_frames")
-                frame_urls.append(url)
+            if frame is not None:
+                phashes.append(get_phash(frame))
+                pdq_hashes.append(get_pdq(frame))
+                
+                with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+                    cv2.imwrite(tmp.name, frame)
+                    url = upload_image(tmp.name, folder="sports-guardian/scraped_frames")
+                    frame_urls.append(url)
+                    os.remove(tmp.name)
+
+        # 2. Process Audio
+        final_audio_fp = None
+        if audio_bytes:
+            logger.info(f"   🎵 Generating Audio Fingerprint on cloud...")
+            with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as tmp:
+                tmp.write(audio_bytes)
+                tmp.flush()
+                final_audio_fp = get_audio_fp(tmp.name)
                 os.remove(tmp.name)
 
-    # 2. Process Audio
-    final_audio_fp = None
-    if audio_bytes:
-        logger.info(f"   🎵 Generating Audio Fingerprint on cloud...")
-        with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as tmp:
-            tmp.write(audio_bytes)
-            tmp.flush()
-            final_audio_fp = get_audio_fp(tmp.name)
-            os.remove(tmp.name)
-
-    # 3. Persist the scraped video record (Status: READY_FOR_VERIFICATION)
-    scraped = ScrapedVideo(
-        scan_job_id       = job_id,
-        platform          = metadata["platform"],
-        platform_video_id = metadata["platform_video_id"],
-        title             = metadata["title"],
-        description       = metadata.get("description", ""),
-        url               = metadata["url"],
-        frame_paths       = frame_urls,
-        uploader          = metadata.get("uploader"),
-        like_count        = metadata.get("like_count"),
-        view_count        = metadata.get("view_count"),
-        comments          = metadata.get("comments", []),
-    )
-    db.add(scraped)
-    db.commit()
-    db.refresh(scraped)
-
-    for i, f_url in enumerate(frame_urls):
-        db.add(ScrapedFrame(
-            frame_number=i,
-            file_path=f_url,
-            phash_value=phashes[i] if i < len(phashes) else None,
-            pdq_hash=pdq_hashes[i] if i < len(pdq_hashes) else None,
-            scraped_video_id=scraped.id
-        ))
-    db.commit()
-
-    # 4. Mark job as waiting for user verification
-    job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
-    if job:
-        job.status = "READY_FOR_VERIFICATION"
+        # 3. Persist the scraped video record (Status: READY_FOR_VERIFICATION)
+        scraped = ScrapedVideo(
+            scan_job_id       = job_id,
+            platform          = metadata["platform"],
+            platform_video_id = metadata["platform_video_id"],
+            title             = metadata["title"],
+            description       = metadata.get("description", ""),
+            url               = metadata["url"],
+            frame_paths       = frame_urls,
+            uploader          = metadata.get("uploader"),
+            like_count        = metadata.get("like_count"),
+            view_count        = metadata.get("view_count"),
+            comments          = metadata.get("comments", []),
+        )
+        db.add(scraped)
         db.commit()
-        logger.info(f"✅ DATA READY — Job {job_id} is waiting for user to click VERIFY.")
+        db.refresh(scraped)
 
-def verify_scan_results(db: Session, job_id: int):
+        for i, f_url in enumerate(frame_urls):
+            db.add(ScrapedFrame(
+                frame_number=i,
+                file_path=f_url,
+                phash_value=phashes[i] if i < len(phashes) else None,
+                pdq_hash=pdq_hashes[i] if i < len(pdq_hashes) else None,
+                scraped_video_id=scraped.id
+            ))
+        db.commit()
+
+        # 4. Mark job as waiting for user verification
+        job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
+        if job:
+            job.status = "READY_FOR_VERIFICATION"
+            db.commit()
+            logger.info(f"✅ DATA READY — Job {job_id} is waiting for user to click VERIFY.")
+    except Exception:
+        db.rollback()
+        logger.error(f"❌ process_raw_external_item failed:\n{traceback.format_exc()}")
+    finally:
+        db.close()
+        threading.current_thread().job_id = None
+
+def verify_scan_results(job_id: int):
     """
     The final phase: Runs AI moderation and database matching on the
     frames that were pushed from the local agent.
     """
     import threading
+    from app.db.session import SessionLocal
     threading.current_thread().job_id = job_id
     
-    job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
-    if not job: return
-
+    db = SessionLocal()
     try:
+        job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
+        if not job: return
+
         job.status = "VERIFYING"
         db.commit()
 
@@ -396,6 +409,7 @@ def verify_scan_results(db: Session, job_id: int):
         db.commit()
         logger.error(f"❌ Verification failed:\n{traceback.format_exc()}")
     finally:
+        db.close()
         threading.current_thread().job_id = None
 
 def run_pipeline_job(
