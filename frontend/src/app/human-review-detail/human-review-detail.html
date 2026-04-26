@@ -141,11 +141,11 @@
                 <div class="comparison-grid-mini">
                     <div class="comp-box">
                         <span class="comp-label">SUSPECT</span>
-                        <img [src]="'/' + sf.file_path.replace('\\\\', '/')" class="comp-img">
+                        <img [src]="getFrameUrl(sf.file_path)" class="comp-img">
                     </div>
                     <div class="comp-box">
                         <span class="comp-label">REFERENCE</span>
-                        <img [src]="'/' + r.matched_asset_frames[i]?.file_path?.replace('\\\\', '/')" class="comp-img" *ngIf="r.matched_asset_frames[i]">
+                        <img [src]="getFrameUrl(r.matched_asset_frames[i]?.file_path)" class="comp-img" *ngIf="r.matched_asset_frames[i]">
                         <div class="no-img" *ngIf="!r.matched_asset_frames[i]">N/A</div>
                     </div>
                 </div>
@@ -165,12 +165,12 @@
                 <div class="comparison-large">
                     <div class="img-box">
                         <label>SUSPECT SOURCE</label>
-                        <img [src]="'/' + pair.suspect.file_path.replace('\\\\', '/')">
+                        <img [src]="getFrameUrl(pair.suspect.file_path)">
                         <div class="hash-info">PDQ: {{ pair.suspect.pdq_hash }}</div>
                     </div>
                     <div class="img-box">
                         <label>MASTER REFERENCE</label>
-                        <img [src]="'/' + pair.reference.file_path.replace('\\\\', '/')" *ngIf="pair.reference">
+                        <img [src]="getFrameUrl(pair.reference.file_path)" *ngIf="pair.reference">
                         <div class="no-img-large" *ngIf="!pair.reference">NO REFERENCE DATA</div>
                         <div class="hash-info" *ngIf="pair.reference">PDQ: {{ pair.reference.pdq_hash }}</div>
                     </div>

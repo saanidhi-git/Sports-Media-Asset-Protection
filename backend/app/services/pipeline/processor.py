@@ -10,36 +10,37 @@ from sqlalchemy.orm import Session
 from app.db.models.asset import Asset
 from app.db.models.asset_frame import AssetFrame
 from app.services.fingerprint.generator import get_phash, get_pdq, get_audio_fp
+from app.services.storage.cloudinary_client import upload_image
 
 logger = logging.getLogger(__name__)
 
 
-def extract_frames(db: Session, asset_id: int, num_frames: int):
+def extract_frames(db: Session, asset_id: int, num_frames: int, video_path: str = None):
     """
     Background task: extracts evenly-spaced frames from a registered asset video,
     computes pHash + PDQ per-frame and audio fingerprint for the whole file,
-    and persists all embeddings to the database.
-
-    Production guarantees:
-      - try/except/finally always sets asset.status so it never hangs in PROCESSING.
-      - cv2.VideoCapture is always released via finally.
-      - Corrupted frames are skipped, not fatal.
-      - PIL/numpy intermediate objects are explicitly freed (gc) to prevent leaks.
+    uploads frames to Cloudinary, and persists all embeddings to the database.
     """
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         logger.error(f"extract_frames: Asset {asset_id} not found.")
         return
 
-    video_path = asset.media_file_path
+    # If video_path is not provided (e.g. for already uploaded assets), we use media_file_path
+    # but for new registrations, we pass the local temp path.
+    if not video_path:
+        video_path = asset.media_file_path
+
     if not os.path.exists(video_path):
+        # If it's a URL, we might need to download it first if we want to process it.
+        # But for new uploads, we are passing the local /tmp path.
         logger.error(f"extract_frames: Video not found at {video_path}")
         asset.status = "FAILED"
         db.commit()
         return
 
-    # Frames are stored alongside the uploaded video
-    frames_dir = os.path.join(os.path.dirname(video_path), "frames")
+    # Use a temp directory for extracted frames
+    frames_dir = os.path.join(os.path.dirname(video_path), "frames_tmp")
     os.makedirs(frames_dir, exist_ok=True)
 
     cap = cv2.VideoCapture(video_path)
@@ -60,33 +61,38 @@ def extract_frames(db: Session, asset_id: int, num_frames: int):
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
             ret, frame = cap.read()
             if not ret:
-                logger.warning(f"Frame {i} (idx {frame_idx}) could not be read — skipping.")
                 continue
 
-            # --- Fingerprinting (each function handles its own errors) ---
+            # --- Fingerprinting ---
             phash = get_phash(frame)
             pdq   = get_pdq(frame)
 
-            # --- Persist frame to disk ---
+            # --- Save temporarily and upload to Cloudinary ---
             frame_filename = f"frame_{i:04d}_{uuid.uuid4().hex[:8]}.jpg"
-            frame_path = os.path.join(frames_dir, frame_filename)
-            cv2.imwrite(frame_path, frame, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+            temp_frame_path = os.path.join(frames_dir, frame_filename)
+            cv2.imwrite(temp_frame_path, frame, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+            
+            try:
+                cloudinary_url = upload_image(temp_frame_path)
+            finally:
+                if os.path.exists(temp_frame_path):
+                    os.remove(temp_frame_path)
 
-            # Free the raw frame array immediately
+            # Free the raw frame array
             del frame
             gc.collect()
 
             # --- Persist to DB ---
             db.add(AssetFrame(
                 frame_number=i,
-                file_path=frame_path,
+                file_path=cloudinary_url,
                 phash_value=phash,
                 pdq_hash=pdq,
                 asset_id=asset.id,
             ))
             extracted_count += 1
 
-        # --- Audio fingerprint for the whole file ---
+        # --- Audio fingerprint ---
         audio_fp = get_audio_fp(video_path)
 
         asset.status       = "COMPLETED"
@@ -95,10 +101,7 @@ def extract_frames(db: Session, asset_id: int, num_frames: int):
             asset.audio_fp = audio_fp
 
         db.commit()
-        logger.info(
-            f"Asset {asset_id} fingerprinted: {extracted_count} frames, "
-            f"audio={'yes' if audio_fp else 'no'}"
-        )
+        logger.info(f"Asset {asset_id} processed. Frames uploaded to Cloudinary.")
 
     except Exception as e:
         db.rollback()
@@ -108,3 +111,9 @@ def extract_frames(db: Session, asset_id: int, num_frames: int):
 
     finally:
         cap.release()
+        # Clean up local video file if it was a temp file
+        if "/tmp" in video_path or "temp" in video_path:
+            if os.path.exists(video_path):
+                os.remove(video_path)
+        if os.path.exists(frames_dir):
+            shutil.rmtree(frames_dir, ignore_errors=True)

@@ -14,10 +14,12 @@ from app.db.models.asset_frame import AssetFrame
 from app.db.models.user import User
 from app.schemas.asset import AssetOut, AssetRegisterResponse, PaginatedFrames
 from app.services.pipeline.processor import extract_frames
+from app.services.storage.cloudinary_client import upload_video, upload_image, upload_auto, delete_asset_by_url
 
 router   = APIRouter(prefix="/assets", tags=["Assets"])
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+# Use /tmp for Render compatibility, or local uploads/temp for Windows dev
+TEMP_DIR = "/tmp/sg_uploads" if os.name != 'nt' else "uploads/temp"
+os.makedirs(TEMP_DIR, exist_ok=True)
 
 
 @router.get("/", response_model=list[AssetOut])
@@ -94,26 +96,36 @@ def register_asset(
     except (json.JSONDecodeError, TypeError):
         raise HTTPException(status_code=422, detail="media_to_scrap must be valid JSON.")
 
-    # Save uploaded video
+    # Save uploaded video temporarily for local processing
     ext = os.path.splitext(selected_file.filename or "")[1]
-    media_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4()}{ext}")
-    with open(media_path, "wb") as buf:
+    temp_video_path = os.path.join(TEMP_DIR, f"{uuid.uuid4()}{ext}")
+    with open(temp_video_path, "wb") as buf:
         shutil.copyfileobj(selected_file.file, buf)
 
-    # Optionally save scoreboard image
-    scoreboard_path: Optional[str] = None
+    # OPTIMIZATION: We skip uploading the 63MB video to Cloudinary.
+    # We will only upload the extracted frames during the background task.
+    media_url = f"local_ephemeral://{selected_file.filename}"
+
+    # Optionally save and upload scoreboard image/doc
+    scoreboard_url: Optional[str] = None
     if scoreboard_file:
         sb_ext = os.path.splitext(scoreboard_file.filename or "")[1]
-        scoreboard_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4()}{sb_ext}")
-        with open(scoreboard_path, "wb") as buf:
+        temp_sb_path = os.path.join(TEMP_DIR, f"{uuid.uuid4()}{sb_ext}")
+        with open(temp_sb_path, "wb") as buf:
             shutil.copyfileobj(scoreboard_file.file, buf)
+        try:
+            # Handle non-image scoreboards
+            scoreboard_url = upload_auto(temp_sb_path, folder="sports-guardian/scoreboards")
+        finally:
+            if os.path.exists(temp_sb_path):
+                os.remove(temp_sb_path)
 
     asset = Asset(
         asset_name=asset_name,
         owner_company=owner_company,
         match_description=match_description,
-        media_file_path=media_path,
-        scoreboard_file_path=scoreboard_path,
+        media_file_path=media_url,
+        scoreboard_file_path=scoreboard_url,
         scrap_youtube=media_options.get("youtube", False),
         scrap_reddit=media_options.get("reddit", False),
         scrap_instagram=media_options.get("instagram", False),
@@ -125,19 +137,38 @@ def register_asset(
     db.commit()
     db.refresh(asset)
 
-    background_tasks.add_task(extract_frames, db, asset.id, num_frames)
+    # Pass the local temp path for processing, it will be deleted by the processor
+    background_tasks.add_task(extract_frames, db, asset.id, num_frames, temp_video_path)
 
     return {"status": "processing", "asset_id": asset.id, "name": asset.asset_name}
+
+
+def cleanup_cloudinary_assets(urls: list[str]):
+    """Background task to remove files from Cloudinary."""
+    for url in urls:
+        if url:
+            delete_asset_by_url(url)
 
 
 @router.delete("/{asset_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_asset(
     asset_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     asset = db.query(Asset).filter(Asset.id == asset_id, Asset.user_id == current_user.id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found.")
+    
+    # Collect all URLs to delete from Cloudinary
+    urls_to_delete = [asset.media_file_path, asset.scoreboard_file_path]
+    for frame in asset.frames:
+        urls_to_delete.append(frame.file_path)
+    
+    # Delete from DB (cascades to frames, detections, reviews due to model config)
     db.delete(asset)
     db.commit()
+
+    # Trigger background cleanup of physical files
+    background_tasks.add_task(cleanup_cloudinary_assets, urls_to_delete)

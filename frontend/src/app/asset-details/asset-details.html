@@ -44,6 +44,10 @@
         <p>Operational protection profile for {{ a.owner_company }}</p>
       </div>
       <div class="header-right" style="display: flex; gap: 15px; align-items: center;">
+        <button class="btn btn-secondary btn-sm" routerLink="/home">← BACK</button>
+        <button class="btn btn-danger btn-sm" (click)="deleteAsset()" [disabled]="isDeleting()">
+          {{ isDeleting() ? 'DELETING...' : 'DELETE ASSET' }}
+        </button>
         <button class="btn btn-primary" routerLink="/scan/new">
           <span class="icon">📡</span> ADD OPERATION (SCAN)
         </button>

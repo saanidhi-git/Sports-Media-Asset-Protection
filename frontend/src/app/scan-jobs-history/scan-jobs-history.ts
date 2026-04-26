@@ -59,4 +59,17 @@ export class ScanJobsHistory implements OnInit {
   getPlatformIcon(platform: string): string {
     return { youtube: '🔴', instagram: '📷', reddit: '🟠' }[platform] || '📹';
   }
+
+  getFrameUrl(filePath: string): string {
+    if (!filePath) return '';
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      return filePath;
+    }
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    if (normalizedPath.startsWith('/uploads/')) return normalizedPath;
+    if (normalizedPath.includes('uploads/')) {
+      return '/' + normalizedPath.substring(normalizedPath.indexOf('uploads/'));
+    }
+    return '/uploads/' + normalizedPath;
+  }
 }

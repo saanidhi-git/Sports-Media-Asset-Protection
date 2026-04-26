@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpEvent } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export interface AssetRegisterResponse {
@@ -53,7 +53,7 @@ export class AssetService {
     numFrames: number;
     selectedFile: File;
     scoreboardFile: File | null;
-  }): Observable<AssetRegisterResponse> {
+  }): Observable<HttpEvent<any>> {
     const formData = new FormData();
     formData.append('asset_name', data.assetName);
     formData.append('owner_company', data.ownerCompany);
@@ -66,7 +66,10 @@ export class AssetService {
       formData.append('scoreboard_file', data.scoreboardFile);
     }
 
-    return this.http.post<AssetRegisterResponse>('/api/assets/register', formData);
+    return this.http.post<any>('/api/assets/register', formData, {
+      reportProgress: true,
+      observe: 'events'
+    });
   }
 
   getAssets(): Observable<Asset[]> {
@@ -79,5 +82,9 @@ export class AssetService {
 
   getAssetFrames(id: number, page: number = 1, limit: number = 10): Observable<PaginatedFrames> {
     return this.http.get<PaginatedFrames>(`/api/assets/${id}/frames?page=${page}&limit=${limit}`);
+  }
+
+  deleteAsset(id: number): Observable<void> {
+    return this.http.delete<void>(`/api/assets/${id}`);
   }
 }

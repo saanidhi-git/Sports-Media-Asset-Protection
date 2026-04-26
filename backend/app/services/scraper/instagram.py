@@ -150,11 +150,6 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_ex
         title = meta.get("title") or f"Instagram Reel {url.rstrip('/').split('/')[-1]}"
         video_id = url.rstrip("/").split("/")[-1]
         
-        base_dir = Path("uploads/scraped/instagram") / video_id
-        base_dir.mkdir(parents=True, exist_ok=True)
-        
-        frames_dir = str(base_dir / "frames")
-
         if settings.STREAM_MODE:
             # ── Pure Streaming ──
             logger.info(f"   📥 [1/2] Streaming Instagram reel {video_id} …")
@@ -163,25 +158,24 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_ex
                 url=url,
                 stream_url=stream_url,
                 num_frames=num_frames,
-                save_frames_dir=frames_dir,
                 early_exit_score_fn=early_exit_score_fn,
             )
             fp["audio_fp"] = get_audio_fp_from_stream(url)
 
         else:
-            video_path = str(base_dir / f"{video_id}.mp4")
+            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
+                video_path = tmp.name
+
             logger.info(f"   ⬇ [1/4] Downloading Instagram: {video_id}...")
             if not run_ytdlp(url, video_path):
                 logger.error(f"   ❌ Instagram download failed for {video_id}")
+                if os.path.exists(video_path): os.remove(video_path)
                 continue
 
             logger.info(f"   🎞 [2/4] Extracting {num_frames} frames & fingerprinting...")
-            fp = fingerprint_video_file(video_path, num_frames=num_frames, save_frames_dir=frames_dir)
+            fp = fingerprint_video_file(video_path, num_frames=num_frames)
             
-            try:
-                Path(video_path).unlink(missing_ok=True)
-            except Exception:
-                pass
+            if os.path.exists(video_path): os.remove(video_path)
 
         results.append({
             "platform":          "instagram",

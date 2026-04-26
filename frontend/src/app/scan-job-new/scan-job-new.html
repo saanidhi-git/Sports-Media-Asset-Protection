@@ -222,8 +222,7 @@
         <div class="evidence-frames" *ngIf="r.frames && r.frames.length > 0">
           <div class="frames-title">EVIDENCE FRAMES</div>
           <div class="frames-grid">
-            <!-- Replace Windows backslashes with forward slashes and ensure it starts with / -->
-            <img *ngFor="let frame of r.frames.slice(0, 4)" [src]="'/' + frame.replace('\\\\', '/')" class="evidence-img">
+            <img *ngFor="let frame of r.frames.slice(0, 4)" [src]="getFrameUrl(frame)" class="evidence-img">
           </div>
         </div>
 

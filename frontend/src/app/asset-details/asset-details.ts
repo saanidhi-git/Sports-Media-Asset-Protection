@@ -1,6 +1,6 @@
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink, Router } from '@angular/router';
 import { AssetService, Asset, PaginatedFrames, AssetFrame } from '../core/services/asset.service';
 import { AuthService } from '../core/services/auth.service';
 
@@ -13,6 +13,7 @@ import { AuthService } from '../core/services/auth.service';
 })
 export class AssetDetails implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly assetService = inject(AssetService);
   private readonly authService = inject(AuthService);
 
@@ -21,6 +22,7 @@ export class AssetDetails implements OnInit {
   protected readonly operatorName = signal('JH-XXXX');
   protected readonly securityStatus = signal('OPTIMAL');
   protected readonly isLoading = signal(true);
+  protected readonly isDeleting = signal(false);
   public readonly currentPage = signal(1);
   public readonly selectedFrame = signal<AssetFrame | null>(null);
 
@@ -79,10 +81,35 @@ export class AssetDetails implements OnInit {
     this.selectedFrame.set(null);
   }
 
+  public deleteAsset() {
+    const asset = this.asset();
+    if (!asset) return;
+
+    if (confirm(`⚠️ WARNING: Are you sure you want to delete asset "${asset.asset_name}"? \n\nThis will permanently remove all associated frames, detection results, and legal reviews from both the database and cloud storage.`)) {
+      this.isDeleting.set(true);
+      this.assetService.deleteAsset(asset.id).subscribe({
+        next: () => {
+          alert('Asset and all associated data successfully removed.');
+          this.router.navigate(['/home']);
+        },
+        error: (err) => {
+          console.error('Failed to delete asset', err);
+          alert('Failed to delete asset. System protocol error.');
+          this.isDeleting.set(false);
+        }
+      });
+    }
+  }
+
   getFrameUrl(filePath: string): string {
     if (!filePath) return '';
     
-    // Normalize slashes
+    // Support absolute URLs (Cloudinary/S3)
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      return filePath;
+    }
+
+    // Normalize slashes for local paths
     const normalizedPath = filePath.replace(/\\/g, '/');
     
     // If the path already starts with /uploads, return it

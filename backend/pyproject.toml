@@ -32,13 +32,5 @@ dependencies = [
     "langgraph-sdk>=0.3.13",
     "langgraph-api>=0.8.1",
     "langgraph-cli[api,sdk]>=0.4.24",
-]
-
-[project.optional-dependencies]
-test = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "pytest-cov>=4.1.0",
-    "respx>=0.20.0",
-    "httpx>=0.28.1",
+    "cloudinary>=1.41.0",
 ]

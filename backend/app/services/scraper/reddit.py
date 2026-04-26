@@ -131,11 +131,6 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_ex
             if p_url:
                 thumb_url = p_url.replace("&amp;", "&")
 
-        base_dir = Path("uploads/scraped/reddit") / post_id
-        base_dir.mkdir(parents=True, exist_ok=True)
-        
-        frames_dir = str(base_dir / "frames")
-
         if settings.STREAM_MODE:
             # ── Pure Streaming ──
             # Try the post URL first (direct video link), fall back to permalink
@@ -153,7 +148,6 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_ex
                     url=target_url,
                     stream_url=stream_url,
                     num_frames=num_frames,
-                    save_frames_dir=frames_dir,
                     early_exit_score_fn=early_exit_score_fn,
                 )
                 fp["audio_fp"] = get_audio_fp_from_stream(target_url)
@@ -164,12 +158,21 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_ex
             # --- FALLBACK: If no frames were extracted, try to save the Reddit thumbnail ---
             if not fp.get("frame_paths") and thumb_url:
                 logger.info(f"   🖼 [2/2] No video frames; falling back to Reddit thumbnail...")
-                thumb_path = os.path.join(frames_dir, "thumb.jpg")
+                with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+                    thumb_path = tmp.name
+                
                 if download_image(thumb_url, thumb_path):
-                    fp["frame_paths"] = [thumb_path.replace("\\", "/")]
+                    try:
+                        from app.services.storage.cloudinary_client import upload_image
+                        cloud_url = upload_image(thumb_path, folder="sports-guardian/scraped_frames")
+                        fp["frame_paths"] = [cloud_url]
+                    finally:
+                        if os.path.exists(thumb_path): os.remove(thumb_path)
 
         else:
-            video_path = str(base_dir / f"{post_id}.mp4")
+            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
+                video_path = tmp.name
+
             logger.info(f"   ⬇ [1/4] Downloading Reddit: {post_id}...")
             
             downloaded = any(
@@ -178,15 +181,13 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_ex
             )
             if not downloaded:
                 logger.warning(f"   ❌ Reddit: could not download {post_id}")
+                if os.path.exists(video_path): os.remove(video_path)
                 continue
 
             logger.info(f"   🎞 [2/4] Extracting {num_frames} frames & fingerprinting...")
-            fp = fingerprint_video_file(video_path, num_frames=num_frames, save_frames_dir=frames_dir)
+            fp = fingerprint_video_file(video_path, num_frames=num_frames)
             
-            try:
-                Path(video_path).unlink(missing_ok=True)
-            except Exception:
-                pass
+            if os.path.exists(video_path): os.remove(video_path)
 
         # Enrich with comments
         comments = _fetch_reddit_comments(post_id)

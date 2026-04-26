@@ -64,6 +64,22 @@ export class Home implements OnInit {
   logout() {
     this.authService.logout();
   }
+
+  deleteAsset(event: Event, asset: Asset) {
+    event.stopPropagation(); // Prevent navigating to details
+    if (confirm(`⚠️ DELETE ASSET: Are you sure you want to remove "${asset.asset_name}" and all its cloud data?`)) {
+      this.assetService.deleteAsset(asset.id).subscribe({
+        next: () => {
+          this.fetchUserAssets(); // Refresh list
+          this.fetchStats();
+        },
+        error: (err) => {
+          console.error('Failed to delete asset', err);
+          alert('System error during deletion protocol.');
+        }
+      });
+    }
+  }
   
   protected readonly systemLogs = [
     { time: '14:20:05', event: 'ENCRYPTION_KEY_ROTATED', node: 'SEC-A1' },

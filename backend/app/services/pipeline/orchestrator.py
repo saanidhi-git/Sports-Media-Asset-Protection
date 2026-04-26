@@ -75,12 +75,6 @@ def _match_against_assets(
         ref_pdq_hashes = [f.pdq_hash   for f in asset.frames if f.pdq_hash]
         ref_audio_fp   = asset.audio_fp
 
-    # yield_per avoids loading entire assets table into RAM
-    for asset in db.query(Asset).filter(Asset.status == "COMPLETED").yield_per(100):
-        ref_phashes    = [f.phash_value for f in asset.frames if f.phash_value]
-        ref_pdq_hashes = [f.pdq_hash   for f in asset.frames if f.pdq_hash]
-        ref_audio_fp   = asset.audio_fp
-
         p   = phash_similarity(suspect_phashes, ref_phashes)
         pdq = pdq_similarity(suspect_pdq_hashes, ref_pdq_hashes)
         a   = audio_similarity(suspect_audio_fp, ref_audio_fp)
@@ -93,6 +87,8 @@ def _match_against_assets(
             metadata_score=m, 
             ai_match=(ai_decision == "HIGHLIGHT")
         )
+
+        logger.info(f"      🔍 Match check against '{asset.asset_name}': Score={score_data['final_score']:.3f} (pHash={p:.2f}, PDQ={pdq:.2f}, Meta={m:.2f})")
 
         if best_score_data is None or score_data["final_score"] > best_score_data["final_score"]:
             best_score_data = score_data
@@ -137,7 +133,7 @@ def _match_against_assets(
 
     detection = DetectionResult(
         scraped_video_id = scraped_video.id,
-        matched_asset_id = best_asset_id if best_score_data["verdict"] in ("FLAG", "REVIEW") else None,
+        matched_asset_id = best_asset_id if best_score_data["verdict"] in ("FLAG", "REVIEW", "VIOLATED") else None,
         phash_score      = best_score_data["phash_score"],
         pdq_score        = best_score_data["pdq_score"],
         audio_score      = best_score_data["audio_score"],

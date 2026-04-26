@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://api.shieldmedia.com' // Placeholder for actual production URL
+  apiUrl: 'https://your-backend-service.onrender.com'
 };

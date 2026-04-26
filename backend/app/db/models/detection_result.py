@@ -14,7 +14,7 @@ class DetectionResult(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     scraped_video_id = Column(Integer, ForeignKey("scraped_videos.id", ondelete="CASCADE"), nullable=False)
-    matched_asset_id = Column(Integer, ForeignKey("assets.id", ondelete="SET NULL"), nullable=True)
+    matched_asset_id = Column(Integer, ForeignKey("assets.id", ondelete="CASCADE"), nullable=True)
     
     phash_score = Column(Float, nullable=False, default=0.0)
     pdq_score = Column(Float, nullable=False, default=0.0)
@@ -33,5 +33,5 @@ class DetectionResult(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     scraped_video = relationship("ScrapedVideo", back_populates="detection_results")
-    matched_asset = relationship("Asset")
+    matched_asset = relationship("Asset", back_populates="detection_results")
     judge_review = relationship("JudgeReview", back_populates="detection_result", uselist=False, cascade="all, delete-orphan")

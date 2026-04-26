@@ -250,6 +250,19 @@ export class ScanJobNew implements OnInit, OnDestroy {
     }[verdict] || verdict;
   }
 
+  getFrameUrl(filePath: string): string {
+    if (!filePath) return '';
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      return filePath;
+    }
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    if (normalizedPath.startsWith('/uploads/')) return normalizedPath;
+    if (normalizedPath.includes('uploads/')) {
+      return '/' + normalizedPath.substring(normalizedPath.indexOf('uploads/'));
+    }
+    return '/uploads/' + normalizedPath;
+  }
+
   get flagCount(): number {
     return this.results().filter(r => r.verdict === 'FLAG' || r.verdict === 'VIOLATED').length;
   }

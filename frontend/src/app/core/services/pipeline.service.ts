@@ -59,11 +59,11 @@ export class PipelineService {
   }
 
   getReviewQueue(): Observable<DetectionResult[]> {
-    return this.http.get<DetectionResult[]>('/api/pipeline/review-queue');
+    return this.http.get<DetectionResult[]>('/api/review/queue');
   }
 
   getReviewCase(id: number): Observable<DetectionResult> {
-    return this.http.get<DetectionResult>(`/api/pipeline/review-queue/${id}`);
+    return this.http.get<DetectionResult>(`/api/review/${id}`);
   }
 
   getHealthMatrix(): Observable<any> {

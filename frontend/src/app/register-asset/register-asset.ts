@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AssetService } from '../core/services/asset.service';
 import { AuthService } from '../core/services/auth.service';
 import { SidebarComponent } from '../core/components/sidebar/sidebar';
+import { HttpEventType } from '@angular/common/http';
 
 @Component({
   selector: 'app-register-asset',
@@ -34,6 +35,7 @@ export class RegisterAsset implements OnInit {
   protected readonly generatedFrames = signal<string[]>([]);
   protected readonly isProcessing = signal(false);
   protected readonly isSubmitting = signal(false);
+  protected readonly uploadProgress = signal<number>(0);
   protected readonly errorMessage = signal<string | null>(null);
 
   ngOnInit() {
@@ -65,6 +67,7 @@ export class RegisterAsset implements OnInit {
 
     this.isSubmitting.set(true);
     this.errorMessage.set(null);
+    this.uploadProgress.set(0);
 
     this.assetService.registerAsset({
       assetName: this.assetName,
@@ -75,9 +78,14 @@ export class RegisterAsset implements OnInit {
       selectedFile: file,
       scoreboardFile: this.scoreboardFile()
     }).subscribe({
-      next: (res) => {
-        console.log('Asset registered successfully', res);
-        this.router.navigate(['/home']);
+      next: (event) => {
+        if (event.type === HttpEventType.UploadProgress) {
+          const progress = Math.round(100 * event.loaded / (event.total || file.size));
+          this.uploadProgress.set(progress);
+        } else if (event.type === HttpEventType.Response) {
+          console.log('Asset registered successfully', event.body);
+          this.router.navigate(['/home']);
+        }
       },
       error: (err) => {
         console.error('Asset registration failed', err);

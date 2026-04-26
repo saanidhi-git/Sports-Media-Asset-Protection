@@ -36,3 +36,4 @@ class Asset(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     owner = relationship("User", back_populates="assets")
     frames = relationship("AssetFrame", back_populates="asset", cascade="all, delete-orphan")
+    detection_results = relationship("DetectionResult", back_populates="matched_asset", cascade="all, delete-orphan")

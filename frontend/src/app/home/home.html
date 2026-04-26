@@ -93,6 +93,10 @@
             <div class="asset-sq-overlay">
               <span class="type-tag">{{ getAssetType(asset) }}</span>
             </div>
+            <!-- QUICK DELETE BIN -->
+            <button class="quick-delete-btn" (click)="deleteAsset($event, asset)" title="Delete Asset">
+              🗑️
+            </button>
           </div>
           <div class="asset-sq-info">
             <div class="asset-sq-name">{{ asset.asset_name }}</div>

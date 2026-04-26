@@ -8,6 +8,7 @@ import gc
 import logging
 import subprocess
 import tempfile
+import uuid
 from pathlib import Path
 import random
 from typing import Optional
@@ -17,28 +18,22 @@ import requests
 
 from app.core.config import settings
 from app.services.fingerprint.generator import get_audio_fp, get_pdq, get_phash
+from app.services.storage.cloudinary_client import upload_image
 
 logger = logging.getLogger(__name__)
 
-class ScrapingError(Exception):
-    """Base class for scraping-related errors."""
-    pass
-
-class VideoTooLongError(ScrapingError):
-    """Raised when a video exceeds the maximum allowed duration."""
-    pass
-
-def fingerprint_video_file(video_path: str, num_frames: int = 8, save_frames_dir: str = None) -> dict:
+def fingerprint_video_file(video_path: str, num_frames: int = 8) -> dict:
     """
-    Opens a video, extracts `num_frames` frames.
+    Opens a video, extracts `num_frames` frames, and uploads to Cloudinary.
     Returns: {phashes, pdq_hashes, audio_fp, frame_paths}
     """
     phashes: list[str]    = []
     pdq_hashes: list[str] = []
     frame_paths: list[str] = []
     
-    if save_frames_dir:
-        os.makedirs(save_frames_dir, exist_ok=True)
+    # Use a temp local dir for extraction before cloud upload
+    temp_dir = os.path.join(tempfile.gettempdir(), f"sg_frames_{uuid.uuid4().hex[:8]}")
+    os.makedirs(temp_dir, exist_ok=True)
 
     cap = cv2.VideoCapture(video_path)
     try:
@@ -47,39 +42,39 @@ def fingerprint_video_file(video_path: str, num_frames: int = 8, save_frames_dir
             return {"phashes": phashes, "pdq_hashes": pdq_hashes, "audio_fp": None, "frame_paths": []}
             
         n = min(num_frames, total)
-        
-        # --- STRATIFIED SAMPLING ---
-        if n > 40:
-            n = 40
-            strata_size = total // n
-            frame_indices = [
-                random.randint(i * strata_size, min((i + 1) * strata_size - 1, total - 1))
-                for i in range(n)
-            ]
-        else:
-            step = max(1, total // n) if n > 0 else 1
-            frame_indices = [i * step for i in range(n)]
+        step = max(1, total // n) if n > 0 else 1
+        frame_indices = [i * step for i in range(n)]
 
         for idx in frame_indices:
             cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
             ret, frame = cap.read()
             if not ret:
                 continue
+            
             ph = get_phash(frame)
             pd = get_pdq(frame)
-            if ph:
-                phashes.append(ph)
-            if pd:
-                pdq_hashes.append(pd)
+            if ph: phashes.append(ph)
+            if pd: pdq_hashes.append(pd)
                 
-            if save_frames_dir:
-                frame_path = os.path.join(save_frames_dir, f"frame_{idx:05d}.jpg")
-                cv2.imwrite(frame_path, frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
-                frame_paths.append(frame_path.replace("\\", "/"))
-    except Exception as e:
-        logger.warning(f"fingerprint_video_file: {e}")
+            # Use an individual temp file for the frame
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_frame:
+                local_frame_path = tmp_frame.name
+            
+            # Use lower quality and smaller size for memory efficiency
+            cv2.imwrite(local_frame_path, frame, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
+            cloud_url = upload_image(local_frame_path, folder="sports-guardian/scraped_frames")
+            frame_paths.append(cloud_url)
+            
+            # Immediate cleanup
+            if os.path.exists(local_frame_path):
+                os.remove(local_frame_path)
+            del frame
+            gc.collect()
+                    
     finally:
         cap.release()
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
     return {
         "phashes":    phashes,
@@ -153,19 +148,19 @@ def fingerprint_video_stream(
     url: str,
     stream_url: str,
     num_frames: int = 8,
-    save_frames_dir: str | None = None,
     early_exit_score_fn=None,
 ) -> dict:
     """
-    Pure Streaming: Seeks directly to timestamps in the network stream.
+    Pure Streaming: Seeks directly to timestamps in the network stream and uploads to Cloudinary.
     """
     phashes:     list[str] = []
     pdq_hashes:  list[str] = []
     frame_paths: list[str] = []
     early_exit   = False
 
-    if save_frames_dir:
-        os.makedirs(save_frames_dir, exist_ok=True)
+    # Temp local dir for extraction
+    temp_dir = os.path.join(tempfile.gettempdir(), f"sg_stream_{uuid.uuid4().hex[:8]}")
+    os.makedirs(temp_dir, exist_ok=True)
 
     duration = _probe_duration(url)
     if not duration or duration <= 0:
@@ -191,15 +186,20 @@ def fingerprint_video_stream(
 
             ph = get_phash(frame)
             pd = get_pdq(frame)
-            if ph:
-                phashes.append(ph)
-            if pd:
-                pdq_hashes.append(pd)
+            if ph: phashes.append(ph)
+            if pd: pdq_hashes.append(pd)
 
-            if save_frames_dir:
-                frame_path = os.path.join(save_frames_dir, f"frame_{idx:05d}.jpg")
-                cv2.imwrite(frame_path, frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
-                frame_paths.append(frame_path.replace("\\", "/"))
+            # Use an individual temp file for the frame
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp_frame:
+                local_path = tmp_frame.name
+            
+            try:
+                cv2.imwrite(local_path, frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+                cloud_url = upload_image(local_path, folder="sports-guardian/scraped_frames")
+                frame_paths.append(cloud_url)
+            finally:
+                if os.path.exists(local_path):
+                    os.remove(local_path)
                 
             del frame
             gc.collect()
@@ -214,6 +214,8 @@ def fingerprint_video_stream(
         logger.warning(f"fingerprint_video_stream error: {e}")
     finally:
         cap.release()
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
     return {
         "phashes":     phashes,

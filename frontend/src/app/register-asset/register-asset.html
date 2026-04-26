@@ -93,6 +93,21 @@
         </section>
 
         <footer class="form-actions">
+          <div class="progress-container-full" *ngIf="isSubmitting() && uploadProgress() < 100">
+            <div class="progress-label">
+              <span>UPLOADING MEDIA ASSET...</span>
+              <span>{{ uploadProgress() }}%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" [style.width.%]="uploadProgress()"></div>
+            </div>
+          </div>
+
+          <div class="processing-status" *ngIf="isSubmitting() && uploadProgress() >= 100">
+            <span class="loader-inline"></span>
+            <span class="status-text">UPLOADS COMPLETE. INITIALIZING CLOUD INFRASTRUCTURE...</span>
+          </div>
+
           <div class="error-container" *ngIf="errorMessage()">
             <span class="error-icon">⚠️</span>
             <span class="error-text">{{ errorMessage() }}</span>
