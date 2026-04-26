@@ -73,8 +73,37 @@ class ScrapedFrameMinimal(BaseModel):
     pdq_hash: Optional[str] = None
 
 class EnrichedDetectionResult(BaseModel):
-    # ... (existing fields)
+    id: int
+    verdict: str
+    phash_score: float
+    pdq_score: float
+    audio_score: float
+    metadata_score: float
+    final_score: float
+    platform: str
+    video_title: str
+    video_url: str
+    platform_video_id: str
+    frames: list[str]
+    suspect_frames: list[ScrapedFrameMinimal]
+    matched_asset_id: Optional[int]
+    matched_asset_name: Optional[str]
+    matched_asset_owner: Optional[str]
+    best_ref_frame_path: Optional[str]
+    matched_asset_frames: list[AssetFrameMinimal]
+    frame_similarities: list[float]
+    pdq_similarities: list[float]
+    uploader: Optional[str]
+    comments: list[dict]
+    like_count: Optional[int]
+    view_count: Optional[int]
+    ai_decision: Optional[str]
+    ai_reason: Optional[str]
+    dispatch_status: Optional[str]
+    dispatched_at: Optional[datetime]
     created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ExternalResult(BaseModel):

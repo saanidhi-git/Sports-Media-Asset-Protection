@@ -292,11 +292,24 @@ def process_raw_external_item(
             scraped = ScrapedVideo(
                 scan_job_id=job_id, platform=metadata["platform"],
                 platform_video_id=metadata["platform_video_id"],
-                title=metadata["title"], url=metadata["url"]
+                title=metadata["title"], url=metadata["url"],
+                description=metadata.get("description"),
+                uploader=metadata.get("uploader"),
+                like_count=metadata.get("like_count"),
+                view_count=metadata.get("view_count"),
+                comments=metadata.get("comments", [])
             )
             db.add(scraped)
             db.commit()
             db.refresh(scraped)
+        else:
+            # Update existing record with rich metadata from agent
+            scraped.description = metadata.get("description", scraped.description)
+            scraped.uploader = metadata.get("uploader", scraped.uploader)
+            scraped.like_count = metadata.get("like_count", scraped.like_count)
+            scraped.view_count = metadata.get("view_count", scraped.view_count)
+            scraped.comments = metadata.get("comments", scraped.comments)
+            db.commit()
 
         # 2. Store Raw Audio on Cloudinary
         if audio_bytes:

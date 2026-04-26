@@ -94,7 +94,7 @@ export class HumanReviewDetail implements OnInit {
     plugins: {
       tooltip: {
         callbacks: {
-          label: (ctx) => `Frame ${ctx.parsed.x}: ${((ctx.parsed.y ?? 0) * 100).toFixed(1)}%`
+          label: (ctx) => `Frame ${ctx.parsed.x}: ${(((ctx.parsed as any)?.y ?? 0) * 100).toFixed(1)}%`
         }
       }
     }
