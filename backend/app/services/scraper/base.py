@@ -237,6 +237,7 @@ def get_audio_fp_from_stream(url: str, duration_sec: int = settings.AUDIO_SEGMEN
         subprocess.run(
             [
                 "yt-dlp", "--no-warnings", "--quiet",
+                "--extractor-args", "youtube:player_client=android,web_creator",
                 "-f", "bestaudio", "--extract-audio", "--audio-format", "m4a",
                 "--download-sections", f"*0-{duration_sec}",
                 "-o", output_template, "--no-playlist", url,
