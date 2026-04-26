@@ -43,8 +43,13 @@ export class LoginRegister {
       },
       error: (err) => {
         console.error('Login failed', err);
-        const detail = err.error?.detail;
-        this.errorMessage.set(typeof detail === 'string' ? detail : 'Invalid credentials or system offline.');
+        let msg = 'Invalid credentials or system offline.';
+        if (err.status === 0) {
+          msg = 'Cannot connect to backend server. Please check your internet or wait for the service to wake up.';
+        } else if (err.error?.detail) {
+          msg = typeof err.error.detail === 'string' ? err.error.detail : 'Login failed.';
+        }
+        this.errorMessage.set(msg);
       }
     });
   }
