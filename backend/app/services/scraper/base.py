@@ -85,20 +85,17 @@ def fingerprint_video_file(video_path: str, num_frames: int = 8) -> dict:
 
 def run_ytdlp(url: str, output_path: str, timeout: int = 300, download_sections: Optional[str] = None) -> bool:
     """Downloads a video from `url` to `output_path` via yt-dlp."""
-    cache_dir = os.path.join(os.getcwd(), "uploads", ".cache")
-    os.makedirs(cache_dir, exist_ok=True)
+    cookie_path = get_yt_dlp_cookies()
     try:
         cmd = [
             "yt-dlp", "--no-warnings", "--quiet",
-            "--username", "oauth2", "--password", "",
-            "--cache-dir", cache_dir,
             "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
             "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
             "-o", output_path, "--no-playlist"
         ]
-        if download_sections:
-            cmd.extend(["--download-sections", download_sections])
+        if cookie_path:
+            cmd.extend(["--cookies", cookie_path])
         cmd.append(url)
         
         subprocess.run(
@@ -108,24 +105,27 @@ def run_ytdlp(url: str, output_path: str, timeout: int = 300, download_sections:
         return Path(output_path).exists()
     except Exception as e:
         logger.warning(f"run_ytdlp failed for {url}: {e}")
+    finally:
+        if cookie_path and os.path.exists(cookie_path):
+            os.remove(cookie_path)
     return False
 
 def get_stream_url(url: str, timeout: int = 30) -> str | None:
     """Extracts direct CDN stream URL."""
-    cache_dir = os.path.join(os.getcwd(), "uploads", ".cache")
-    os.makedirs(cache_dir, exist_ok=True)
+    cookie_path = get_yt_dlp_cookies()
     try:
+        cmd = [
+            "yt-dlp", "--no-warnings", "--quiet",
+            "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
+            "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "-f", "bestvideo/best",
+            "--get-url", "--no-playlist", url,
+        ]
+        if cookie_path:
+            cmd.extend(["--cookies", cookie_path])
+
         result = subprocess.run(
-            [
-                "yt-dlp", "--no-warnings", "--quiet",
-                "--username", "oauth2", "--password", "",
-                "--cache-dir", cache_dir,
-                "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
-                "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                "-f", "bestvideo/best",
-                "--get-url", "--no-playlist", url,
-            ],
-            capture_output=True, text=True, timeout=timeout,
+            cmd, capture_output=True, text=True, timeout=timeout,
             encoding="utf-8", errors="replace",
         )
         stream_url = result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
@@ -133,23 +133,26 @@ def get_stream_url(url: str, timeout: int = 30) -> str | None:
             return stream_url
     except Exception as e:
         logger.warning(f"get_stream_url error for {url}: {e}")
+    finally:
+        if cookie_path and os.path.exists(cookie_path):
+            os.remove(cookie_path)
     return None
 
 def _probe_duration(url: str, timeout: int = 30) -> float | None:
     """Return video duration in seconds via yt-dlp."""
-    cache_dir = os.path.join(os.getcwd(), "uploads", ".cache")
-    os.makedirs(cache_dir, exist_ok=True)
+    cookie_path = get_yt_dlp_cookies()
     try:
+        cmd = [
+            "yt-dlp", "--no-warnings", "--quiet",
+            "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
+            "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "--print", "duration", "--no-playlist", url,
+        ]
+        if cookie_path:
+            cmd.extend(["--cookies", cookie_path])
+
         res = subprocess.run(
-            [
-                "yt-dlp", "--no-warnings", "--quiet",
-                "--username", "oauth2", "--password", "",
-                "--cache-dir", cache_dir,
-                "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
-                "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                "--print", "duration", "--no-playlist", url,
-            ],
-            capture_output=True, text=True, timeout=timeout,
+            cmd, capture_output=True, text=True, timeout=timeout,
             encoding="utf-8", errors="replace",
         )
         raw = res.stdout.strip()
@@ -157,6 +160,9 @@ def _probe_duration(url: str, timeout: int = 30) -> float | None:
             return float(raw)
     except Exception as e:
         logger.warning(f"_probe_duration failed for {url}: {e}")
+    finally:
+        if cookie_path and os.path.exists(cookie_path):
+            os.remove(cookie_path)
     return None
 
 def fingerprint_video_stream(
@@ -240,6 +246,16 @@ def fingerprint_video_stream(
         "early_exit":  early_exit,
     }
 
+def get_yt_dlp_cookies() -> str | None:
+    """Writes YOUTUBE_COOKIES env var to a temp file for yt-dlp to use."""
+    content = os.getenv("YOUTUBE_COOKIES")
+    if not content:
+        return None
+    tmp_path = os.path.join(tempfile.gettempdir(), f"cookies_{uuid.uuid4().hex}.txt")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    return tmp_path
+
 def get_audio_fp_from_stream(url: str, duration_sec: int = settings.AUDIO_SEGMENT_DURATION) -> str | None:
     """Downloads a short audio segment for fingerprinting."""
     if shutil.which("fpcalc") is None:
@@ -247,23 +263,23 @@ def get_audio_fp_from_stream(url: str, duration_sec: int = settings.AUDIO_SEGMEN
 
     tmp_dir = tempfile.mkdtemp(prefix="sgai_audio_")
     output_template = os.path.join(tmp_dir, "audio.%(ext)s")
-
-    # Ensure a persistent cache directory for yt-dlp (OAuth2 tokens, etc.)
-    cache_dir = os.path.join(os.getcwd(), "uploads", ".cache")
-    os.makedirs(cache_dir, exist_ok=True)
-
+    
+    cookie_path = get_yt_dlp_cookies()
+    
     try:
+        cmd = [
+            "yt-dlp", "--no-warnings", "--quiet",
+            "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
+            "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "-f", "bestaudio", "--extract-audio", "--audio-format", "m4a",
+            "--download-sections", f"*0-{duration_sec}",
+            "-o", output_template, "--no-playlist", url,
+        ]
+        if cookie_path:
+            cmd.extend(["--cookies", cookie_path])
+
         result = subprocess.run(
-            [
-                "yt-dlp", "--no-warnings", "--quiet",
-                "--username", "oauth2", "--password", "",
-                "--cache-dir", cache_dir,
-                "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
-                "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                "-f", "bestaudio", "--extract-audio", "--audio-format", "m4a",
-                "--download-sections", f"*0-{duration_sec}",
-                "-o", output_template, "--no-playlist", url,
-            ],
+            cmd,
             timeout=120, check=True, capture_output=True, text=True,
             encoding="utf-8", errors="replace",
         )
@@ -276,6 +292,8 @@ def get_audio_fp_from_stream(url: str, duration_sec: int = settings.AUDIO_SEGMEN
         logger.warning(f"get_audio_fp_from_stream failed: {e}")
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
+        if cookie_path and os.path.exists(cookie_path):
+            os.remove(cookie_path)
     return None
 
 def download_image(url: str, output_path: str) -> bool:
