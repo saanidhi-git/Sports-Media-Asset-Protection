@@ -63,7 +63,7 @@ export class LoginRegister {
         let msg = 'Registration failed. Try again.';
         
         if (err.status === 0) {
-          msg = 'Cannot connect to backend server. Ensure it is running on port 8000.';
+          msg = 'Cannot connect to backend server. Please check your internet or wait for the service to wake up.';
         } else if (err.error?.detail) {
           const detail = err.error.detail;
           if (Array.isArray(detail)) {
