@@ -21,6 +21,8 @@ class ScrapedVideo(Base):
     url = Column(String, nullable=False)
     local_folder_path = Column(String, nullable=True)
     frame_paths = Column(JSON, default=[])
+    audio_url = Column(String, nullable=True)
+    audio_fp = Column(Text, nullable=True)
     
     # Rich Metadata
     uploader = Column(String, nullable=True)

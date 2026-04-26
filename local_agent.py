@@ -8,26 +8,18 @@ import logging
 
 # ── AUTO-INSTALL DEPENDENCIES ──────────────────────────────────────────
 def ensure_dependencies():
-    deps = ["yt-dlp", "opencv-python", "requests"]
+    deps = ["yt-dlp", "requests"]
     missing = []
     
-    # Check yt-dlp
     try:
         import yt_dlp
     except ImportError:
         missing.append("yt-dlp")
         
-    # Check requests
     try:
         import requests
     except ImportError:
         missing.append("requests")
-        
-    # Check opencv
-    try:
-        import cv2
-    except ImportError:
-        missing.append("opencv-python")
 
     if missing:
         print(f"📦 Setup: Missing {', '.join(missing)}. Installing now...")
@@ -41,11 +33,8 @@ def ensure_dependencies():
     return True
 
 # ── CONFIGURATION ──────────────────────────────────────────────────────────
-# IMPORTANT: The server automatically updates these when you download it!
 API_BASE_URL = "https://your-app-on-render.com/api/v1" 
 EXTERNAL_AGENT_KEY = "dev-key-123"
-
-# Bundled data (filled during download)
 JOB_ID = 0
 TARGET_VIDEOS = []
 # ───────────────────────────────────────────────────────────────────────────
@@ -54,7 +43,7 @@ logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger("LocalAgent")
 
 def download_and_extract(video_info, tmp_dir):
-    import cv2
+    """Uses ffmpeg (system) to avoid opencv dependency."""
     url = video_info["url"]
     vid = video_info["platform_video_id"]
     platform = video_info.get("platform", "youtube")
@@ -62,23 +51,20 @@ def download_and_extract(video_info, tmp_dir):
     video_path = os.path.join(tmp_dir, f"video_{vid}.mp4")
     audio_path = os.path.join(tmp_dir, f"audio_{vid}.m4a")
     
-    # 1. Download (Optimized for Platform)
+    # 1. Download
     logger.info(f"📥 Downloading ({platform}): {url}")
-    
     ytdlp_cmd = [
         "yt-dlp", "--no-warnings", "--quiet",
         "-f", "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480]/best",
         "--download-sections", "*0-60",
         "-o", video_path, url
     ]
-    
-    # Reddit often needs specific handling for audio/video merge
     if platform == "reddit":
         ytdlp_cmd = ["yt-dlp", "--no-warnings", "--quiet", "-f", "bestvideo+bestaudio/best", "-o", video_path, url]
-
+    
     subprocess.run(ytdlp_cmd)
     
-    # 2. Audio extraction
+    # 2. Audio
     subprocess.run([
         "yt-dlp", "--no-warnings", "--quiet",
         "-f", "bestaudio", "--extract-audio", "--audio-format", "m4a",
@@ -86,22 +72,17 @@ def download_and_extract(video_info, tmp_dir):
         "-o", audio_path, url
     ])
 
-    # 3. Frames
-    cap = cv2.VideoCapture(video_path)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    frames_to_send = []
+    # 3. Extract Frames via FFMPEG
+    logger.info("🎞 Extracting frames...")
+    # Extract 8 frames evenly spaced
+    subprocess.run([
+        "ffmpeg", "-loglevel", "quiet", "-i", video_path,
+        "-vf", "fps=8/60", "-vframes", "8", 
+        os.path.join(tmp_dir, f"frame_{vid}_%d.jpg")
+    ])
     
-    if total_frames > 0:
-        step = total_frames // 8
-        for i in range(8):
-            cap.set(cv2.CAP_PROP_POS_FRAMES, i * step)
-            ret, frame = cap.read()
-            if ret:
-                frame_file = os.path.join(tmp_dir, f"frame_{vid}_{i}.jpg")
-                cv2.imwrite(frame_file, frame)
-                frames_to_send.append(frame_file)
-    cap.release()
-    return frames_to_send, audio_path
+    frames = [os.path.join(tmp_dir, f) for f in os.listdir(tmp_dir) if f.startswith(f"frame_{vid}") and f.endswith(".jpg")]
+    return sorted(frames), audio_path
 
 def process_job(job_id):
     if not ensure_dependencies():
@@ -110,12 +91,11 @@ def process_job(job_id):
     import requests
     videos = TARGET_VIDEOS
     if not videos:
-        logger.error(f"No URLs bundled. Please download the script from the dashboard for Job #{job_id}.")
+        logger.error("No URLs bundled. Please download the script from the dashboard.")
         return
 
     print("\n" + "="*50)
-    print(f"🚀 HYBRID EXTRACTION STARTED — Job #{job_id}")
-    print(f"📦 Total targets to process: {len(videos)}")
+    print(f"🚀 HYBRID EXTRACTION — Job #{job_id}")
     print("="*50 + "\n")
 
     for i, v in enumerate(videos):
@@ -140,17 +120,12 @@ def process_job(job_id):
                 print(f"   ❌ Error: {e}")
 
     print("\n" + "="*50)
-    print("🏁 ALL TARGETS PROCESSED!")
-    print("👉 ACTION: Go back to the dashboard and click 'COMPUTE HASHES & VERIFY'")
+    print("🏁 ALL DATA STORED ON CLOUD!")
+    print("👉 ACTION: Return to dashboard and click 'COMPUTE HASHES & VERIFY'")
     print("="*50 + "\n")
 
 if __name__ == "__main__":
     jid = JOB_ID
-    if len(sys.argv) > 1:
-        jid = int(sys.argv[1])
-    
-    if jid == 0:
-        print("Usage: python local_agent.py <job_id>")
-        sys.exit(1)
-        
+    if len(sys.argv) > 1: jid = int(sys.argv[1])
+    if jid == 0: sys.exit(1)
     process_job(jid)
