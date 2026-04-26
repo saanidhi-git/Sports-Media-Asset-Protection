@@ -112,11 +112,15 @@ def download_agent(request: Request, job_id: Optional[int] = None, db: Session =
     Download the local agent script. 
     If job_id is provided, it bundles the target URLs directly into the script.
     """
+    # In Docker, the current working directory is /app (backend root)
     agent_path = os.path.join(os.getcwd(), "local_agent.py")
+    
     if not os.path.exists(agent_path):
+        # Local dev fallback
         agent_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "local_agent.py")
     
     if not os.path.exists(agent_path):
+        logger.error(f"Agent file not found at: {agent_path}. CWD: {os.getcwd()}")
         raise HTTPException(status_code=404, detail="local_agent.py not found on server.")
 
     with open(agent_path, "r", encoding="utf-8") as f:
