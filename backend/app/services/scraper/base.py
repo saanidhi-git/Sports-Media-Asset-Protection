@@ -85,10 +85,13 @@ def fingerprint_video_file(video_path: str, num_frames: int = 8) -> dict:
 
 def run_ytdlp(url: str, output_path: str, timeout: int = 300, download_sections: Optional[str] = None) -> bool:
     """Downloads a video from `url` to `output_path` via yt-dlp."""
+    cache_dir = os.path.join(os.getcwd(), "uploads", ".cache")
+    os.makedirs(cache_dir, exist_ok=True)
     try:
         cmd = [
             "yt-dlp", "--no-warnings", "--quiet",
             "--username", "oauth2", "--password", "",
+            "--cache-dir", cache_dir,
             "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
             "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
@@ -109,11 +112,14 @@ def run_ytdlp(url: str, output_path: str, timeout: int = 300, download_sections:
 
 def get_stream_url(url: str, timeout: int = 30) -> str | None:
     """Extracts direct CDN stream URL."""
+    cache_dir = os.path.join(os.getcwd(), "uploads", ".cache")
+    os.makedirs(cache_dir, exist_ok=True)
     try:
         result = subprocess.run(
             [
                 "yt-dlp", "--no-warnings", "--quiet",
                 "--username", "oauth2", "--password", "",
+                "--cache-dir", cache_dir,
                 "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
                 "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                 "-f", "bestvideo/best",
@@ -131,11 +137,14 @@ def get_stream_url(url: str, timeout: int = 30) -> str | None:
 
 def _probe_duration(url: str, timeout: int = 30) -> float | None:
     """Return video duration in seconds via yt-dlp."""
+    cache_dir = os.path.join(os.getcwd(), "uploads", ".cache")
+    os.makedirs(cache_dir, exist_ok=True)
     try:
         res = subprocess.run(
             [
                 "yt-dlp", "--no-warnings", "--quiet",
                 "--username", "oauth2", "--password", "",
+                "--cache-dir", cache_dir,
                 "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
                 "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                 "--print", "duration", "--no-playlist", url,
@@ -239,11 +248,16 @@ def get_audio_fp_from_stream(url: str, duration_sec: int = settings.AUDIO_SEGMEN
     tmp_dir = tempfile.mkdtemp(prefix="sgai_audio_")
     output_template = os.path.join(tmp_dir, "audio.%(ext)s")
 
+    # Ensure a persistent cache directory for yt-dlp (OAuth2 tokens, etc.)
+    cache_dir = os.path.join(os.getcwd(), "uploads", ".cache")
+    os.makedirs(cache_dir, exist_ok=True)
+
     try:
         result = subprocess.run(
             [
                 "yt-dlp", "--no-warnings", "--quiet",
                 "--username", "oauth2", "--password", "",
+                "--cache-dir", cache_dir,
                 "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
                 "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                 "-f", "bestaudio", "--extract-audio", "--audio-format", "m4a",
