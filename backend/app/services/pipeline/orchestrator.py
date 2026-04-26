@@ -154,6 +154,78 @@ def _match_against_assets(
     return detection
 
 
+import io
+from PIL import Image
+import numpy as np
+import cv2
+
+def process_raw_external_item(
+    db: Session, 
+    job_id: int, 
+    metadata: dict, 
+    frame_bytes_list: list[bytes], 
+    audio_bytes: Optional[bytes] = None
+):
+    """
+    Handles raw bytes from a local agent. Generates fingerprints ON THE CLOUD
+    and then proceeds with the normal pipeline.
+    """
+    from app.services.fingerprint.generator import get_phash, get_pdq, get_audio_fp
+    from app.services.storage.cloudinary_client import upload_image
+    import tempfile
+    import os
+
+    logger.info(f"──── 🎬 Processing Raw External: {metadata['title'][:60]}")
+
+    phashes = []
+    pdq_hashes = []
+    frame_urls = []
+
+    # 1. Process Frames: Hash & Upload
+    for i, b in enumerate(frame_bytes_list):
+        # Convert bytes to cv2 frame for our existing hashing utils
+        nparr = np.frombuffer(b, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if frame is not None:
+            phashes.append(get_phash(frame))
+            pdq_hashes.append(get_pdq(frame))
+            
+            # Temporary file for Cloudinary upload
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+                cv2.imwrite(tmp.name, frame)
+                url = upload_image(tmp.name, folder="sports-guardian/scraped_frames")
+                frame_urls.append(url)
+                os.remove(tmp.name)
+
+    # 2. Process Audio
+    final_audio_fp = None
+    if audio_bytes:
+        with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as tmp:
+            tmp.write(audio_bytes)
+            tmp.flush()
+            final_audio_fp = get_audio_fp(tmp.name)
+            os.remove(tmp.name)
+
+    # 3. Use the existing item processor logic
+    item_for_pipeline = {
+        **metadata,
+        "phashes": phashes,
+        "pdq_hashes": pdq_hashes,
+        "frame_paths": frame_urls,
+        "audio_fp": final_audio_fp,
+    }
+    
+    process_scraped_item(db, job_id, item_for_pipeline)
+
+    # 4. Mark job as completed
+    job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
+    if job:
+        job.status = "COMPLETED"
+        job.completed_at = datetime.datetime.utcnow()
+        db.commit()
+        logger.info(f"✅ EXTERNAL RAW PUSH COMPLETED for Job {job_id}")
+
 def process_scraped_item(db: Session, job_id: int, item: dict):
     """
     Common logic to persist a scraped item, extract frames/hashes, 
