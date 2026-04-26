@@ -156,8 +156,9 @@ def download_agent(request: Request, job_id: Optional[int] = None, db: Session =
                 "comments": v.comments or []
             })
         
-        # Replace the placeholder in the script
-        content = content.replace("TARGET_VIDEOS = []", f"TARGET_VIDEOS = {json.dumps(video_list)}")
+        # Replace the placeholder in the script with a JSON string wrapped in json.loads()
+        json_data = json.dumps(video_list)
+        content = content.replace("TARGET_VIDEOS = []", f"TARGET_VIDEOS = json.loads({json.dumps(json_data)})")
         content = content.replace("JOB_ID = 0", f"JOB_ID = {job_id}")
 
     filename = f"agent_job_{job_id}.py" if job_id else "local_agent.py"

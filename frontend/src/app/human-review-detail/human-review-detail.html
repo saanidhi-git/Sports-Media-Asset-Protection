@@ -69,7 +69,7 @@
       </div>
 
       <!-- TREND ANALYSIS (LARGE) -->
-      <div class="card graph-card-large mt-25">
+      <div class="card graph-card-large mt-25" *ngIf="r.frame_similarities && r.frame_similarities.length > 0">
         <h3 class="card-title">TEMPORAL SIMILARITY TREND (pHash)</h3>
         <div class="chart-container-large">
           <canvas baseChart
@@ -81,7 +81,7 @@
       </div>
 
       <!-- SCATTER ANALYSIS (LARGE) -->
-      <div class="card graph-card-large mt-25">
+      <div class="card graph-card-large mt-25" *ngIf="r.pdq_similarities && r.pdq_similarities.length > 0">
         <h3 class="card-title">MULTI-HASH DISTANCE ANALYSIS (SCATTER)</h3>
         <div class="chart-container-large">
           <canvas baseChart
