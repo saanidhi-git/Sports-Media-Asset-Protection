@@ -18,15 +18,18 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     
     # CORS
-    BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:4200"]
+    BACKEND_CORS_ORIGINS: Any = ["http://localhost:4200"]
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Any) -> Any:
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
+        elif isinstance(v, list):
             return v
+        elif isinstance(v, str) and v.startswith("["):
+            import json
+            return json.loads(v)
         return ["http://localhost:4200"]
 
     # Database
