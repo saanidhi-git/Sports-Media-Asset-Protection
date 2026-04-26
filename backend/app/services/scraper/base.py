@@ -86,6 +86,7 @@ def fingerprint_video_file(video_path: str, num_frames: int = 8) -> dict:
 def run_ytdlp(url: str, output_path: str, timeout: int = 300, download_sections: Optional[str] = None) -> bool:
     """Downloads a video from `url` to `output_path` via yt-dlp."""
     cookie_path = get_yt_dlp_cookies()
+    proxy_url = os.getenv("RESIDENTIAL_PROXY_URL")
     try:
         cmd = [
             "yt-dlp", "--no-warnings", "--quiet",
@@ -95,6 +96,8 @@ def run_ytdlp(url: str, output_path: str, timeout: int = 300, download_sections:
         ]
         if cookie_path:
             cmd.extend(["--cookies", cookie_path])
+        if proxy_url:
+            cmd.extend(["--proxy", proxy_url])
         cmd.append(url)
         
         subprocess.run(
@@ -112,6 +115,7 @@ def run_ytdlp(url: str, output_path: str, timeout: int = 300, download_sections:
 def get_stream_url(url: str, timeout: int = 90) -> str | None:
     """Extracts direct CDN stream URL."""
     cookie_path = get_yt_dlp_cookies()
+    proxy_url = os.getenv("RESIDENTIAL_PROXY_URL")
     try:
         cmd = [
             "yt-dlp", "--no-warnings", "--quiet",
@@ -121,6 +125,8 @@ def get_stream_url(url: str, timeout: int = 90) -> str | None:
         ]
         if cookie_path:
             cmd.extend(["--cookies", cookie_path])
+        if proxy_url:
+            cmd.extend(["--proxy", proxy_url])
 
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=timeout,
@@ -139,6 +145,7 @@ def get_stream_url(url: str, timeout: int = 90) -> str | None:
 def _probe_duration(url: str, timeout: int = 90) -> float | None:
     """Return video duration in seconds via yt-dlp."""
     cookie_path = get_yt_dlp_cookies()
+    proxy_url = os.getenv("RESIDENTIAL_PROXY_URL")
     try:
         cmd = [
             "yt-dlp", "--no-warnings", "--quiet",
@@ -147,6 +154,8 @@ def _probe_duration(url: str, timeout: int = 90) -> float | None:
         ]
         if cookie_path:
             cmd.extend(["--cookies", cookie_path])
+        if proxy_url:
+            cmd.extend(["--proxy", proxy_url])
 
         res = subprocess.run(
             cmd, capture_output=True, text=True, timeout=timeout,
@@ -277,6 +286,7 @@ def get_audio_fp_from_stream(url: str, duration_sec: int = settings.AUDIO_SEGMEN
     output_template = os.path.join(tmp_dir, "audio.%(ext)s")
     
     cookie_path = get_yt_dlp_cookies()
+    proxy_url = os.getenv("RESIDENTIAL_PROXY_URL")
     
     try:
         cmd = [
@@ -288,6 +298,8 @@ def get_audio_fp_from_stream(url: str, duration_sec: int = settings.AUDIO_SEGMEN
         ]
         if cookie_path:
             cmd.extend(["--cookies", cookie_path])
+        if proxy_url:
+            cmd.extend(["--proxy", proxy_url])
 
         result = subprocess.run(
             cmd,
