@@ -110,7 +110,7 @@ def run_ytdlp(url: str, output_path: str, timeout: int = 300, download_sections:
             os.remove(cookie_path)
     return False
 
-def get_stream_url(url: str, timeout: int = 30) -> str | None:
+def get_stream_url(url: str, timeout: int = 90) -> str | None:
     """Extracts direct CDN stream URL."""
     cookie_path = get_yt_dlp_cookies()
     try:
@@ -138,7 +138,7 @@ def get_stream_url(url: str, timeout: int = 30) -> str | None:
             os.remove(cookie_path)
     return None
 
-def _probe_duration(url: str, timeout: int = 30) -> float | None:
+def _probe_duration(url: str, timeout: int = 90) -> float | None:
     """Return video duration in seconds via yt-dlp."""
     cookie_path = get_yt_dlp_cookies()
     try:
