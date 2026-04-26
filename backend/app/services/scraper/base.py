@@ -246,11 +246,24 @@ def fingerprint_video_stream(
         "early_exit":  early_exit,
     }
 
+import base64
+
 def get_yt_dlp_cookies() -> str | None:
-    """Writes YOUTUBE_COOKIES env var to a temp file for yt-dlp to use."""
-    content = os.getenv("YOUTUBE_COOKIES")
-    if not content:
-        return None
+    """Decodes YOUTUBE_COOKIES_B64 env var into a temp file for yt-dlp."""
+    b64_content = os.getenv("YOUTUBE_COOKIES_B64")
+    if not b64_content:
+        # Fallback to raw if B64 isn't there, but B64 is preferred
+        raw_content = os.getenv("YOUTUBE_COOKIES")
+        if not raw_content:
+            return None
+        content = raw_content
+    else:
+        try:
+            content = base64.b64decode(b64_content).decode("utf-8")
+        except Exception as e:
+            logger.error(f"Failed to decode YOUTUBE_COOKIES_B64: {e}")
+            return None
+
     tmp_path = os.path.join(tempfile.gettempdir(), f"cookies_{uuid.uuid4().hex}.txt")
     with open(tmp_path, "w", encoding="utf-8") as f:
         f.write(content)
