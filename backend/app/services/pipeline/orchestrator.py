@@ -170,18 +170,24 @@ def process_raw_external_item(
     Handles raw bytes from a local agent. Generates fingerprints ON THE CLOUD
     and then proceeds with the normal pipeline.
     """
+    import threading
+    threading.current_thread().job_id = job_id
+    
     from app.services.fingerprint.generator import get_phash, get_pdq, get_audio_fp
     from app.services.storage.cloudinary_client import upload_image
     import tempfile
     import os
 
-    logger.info(f"──── 🎬 Processing Raw External: {metadata['title'][:60]}")
+    logger.info(f"📥 EXTERNAL RAW DATA RECEIVED — Starting cloud processing for Job {job_id}")
+    logger.info(f"   (Extraction handled by Edge Node / Local Agent)")
+    logger.info(f"──── 🎬 Processing: {metadata['title'][:60]}")
 
     phashes = []
     pdq_hashes = []
     frame_urls = []
 
     # 1. Process Frames: Hash & Upload
+    logger.info(f"   🎞️ Generating pHash & PDQ for {len(frame_bytes_list)} frames on cloud...")
     for i, b in enumerate(frame_bytes_list):
         # Convert bytes to cv2 frame for our existing hashing utils
         nparr = np.frombuffer(b, np.uint8)
@@ -201,6 +207,7 @@ def process_raw_external_item(
     # 2. Process Audio
     final_audio_fp = None
     if audio_bytes:
+        logger.info(f"   🎵 Generating Audio Fingerprint (ChromaPrint) on cloud...")
         with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as tmp:
             tmp.write(audio_bytes)
             tmp.flush()
