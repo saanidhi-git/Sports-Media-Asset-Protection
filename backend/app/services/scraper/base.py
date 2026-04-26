@@ -89,7 +89,6 @@ def run_ytdlp(url: str, output_path: str, timeout: int = 300, download_sections:
     try:
         cmd = [
             "yt-dlp", "--no-warnings", "--quiet",
-            "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
             "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
             "-o", output_path, "--no-playlist"
@@ -116,7 +115,6 @@ def get_stream_url(url: str, timeout: int = 90) -> str | None:
     try:
         cmd = [
             "yt-dlp", "--no-warnings", "--quiet",
-            "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
             "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "-f", "bestvideo/best",
             "--get-url", "--no-playlist", url,
@@ -144,7 +142,6 @@ def _probe_duration(url: str, timeout: int = 90) -> float | None:
     try:
         cmd = [
             "yt-dlp", "--no-warnings", "--quiet",
-            "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
             "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "--print", "duration", "--no-playlist", url,
         ]
@@ -254,13 +251,16 @@ def get_yt_dlp_cookies() -> str | None:
     if not b64_content:
         raw_content = os.getenv("YOUTUBE_COOKIES")
         if not raw_content:
+            logger.info("🍪 No YOUTUBE_COOKIES_B64 or YOUTUBE_COOKIES found in env.")
             return None
         content_bytes = raw_content.encode("utf-8")
+        logger.info(f"🍪 Found raw YOUTUBE_COOKIES ({len(content_bytes)} bytes)")
     else:
         try:
             content_bytes = base64.b64decode(b64_content)
+            logger.info(f"🍪 Decoded YOUTUBE_COOKIES_B64 ({len(content_bytes)} bytes)")
         except Exception as e:
-            logger.error(f"Failed to decode YOUTUBE_COOKIES_B64: {e}")
+            logger.error(f"❌ Failed to decode YOUTUBE_COOKIES_B64: {e}")
             return None
 
     tmp_path = os.path.join(tempfile.gettempdir(), f"cookies_{uuid.uuid4().hex}.txt")
@@ -281,7 +281,6 @@ def get_audio_fp_from_stream(url: str, duration_sec: int = settings.AUDIO_SEGMEN
     try:
         cmd = [
             "yt-dlp", "--no-warnings", "--quiet",
-            "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
             "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "-f", "bestaudio", "--extract-audio", "--audio-format", "m4a",
             "--download-sections", f"*0-{duration_sec}",
