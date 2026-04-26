@@ -42,17 +42,21 @@ def ensure_dependencies():
     return True
 
 # ── CONFIGURATION ──────────────────────────────────────────────────────────
-# IMPORTANT: The server automatically updates this URL when you download it!
+# IMPORTANT: The server automatically updates these when you download it!
 API_BASE_URL = "https://your-app-on-render.com/api/v1" 
 EXTERNAL_AGENT_KEY = "dev-key-123"
+
+# Bundled data (filled during download)
+JOB_ID = 0
+TARGET_VIDEOS = []
 # ───────────────────────────────────────────────────────────────────────────
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger("LocalAgent")
 
-def fetch_videos_to_process(job_id):
+def fetch_videos_from_api(job_id):
     import requests
-    """Asks Render for the list of URLs found during the Discovery phase."""
+    """Fallback: Asks Render for the list of URLs if not bundled."""
     url = f"{API_BASE_URL}/pipeline/jobs/{job_id}/videos"
     try:
         resp = requests.get(url)
@@ -115,12 +119,18 @@ def process_job(job_id):
         sys.exit(1)
 
     import requests
-    videos = fetch_videos_to_process(job_id)
+    
+    # Use bundled videos or fetch from API
+    videos = TARGET_VIDEOS
+    if not videos:
+        logger.info("Fetching targets from Cloud API...")
+        videos = fetch_videos_from_api(job_id)
+    
     if not videos:
         logger.warning(f"No videos found for Job #{job_id}. Did Discovery finish?")
         return
 
-    logger.info(f"🚀 Found {len(videos)} videos to process locally.")
+    logger.info(f"🚀 Processing {len(videos)} videos for Job #{job_id}.")
 
     for v in videos:
         logger.info(f"🎬 Processing: {v['title']}")
@@ -151,7 +161,12 @@ def process_job(job_id):
     logger.info("🏁 Local extraction complete. Please return to the website and click 'COMPUTE HASHES & VERIFY'!")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
+    jid = JOB_ID
+    if len(sys.argv) > 1:
+        jid = int(sys.argv[1])
+    
+    if jid == 0:
         print("Usage: python local_agent.py <job_id>")
         sys.exit(1)
-    process_job(int(sys.argv[1]))
+        
+    process_job(jid)

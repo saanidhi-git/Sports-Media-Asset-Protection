@@ -294,8 +294,12 @@ export class ScanJobNew implements OnInit, OnDestroy {
   }
 
   downloadAgent() {
-    // Trigger download of the local agent script
-    window.open(`${this.apiUrl}/api/v1/pipeline/download-agent`, '_blank');
+    // Trigger download of the local agent script with job context
+    const jobId = this.currentJobId();
+    const url = jobId 
+      ? `${this.apiUrl}/api/v1/pipeline/download-agent?job_id=${jobId}`
+      : `${this.apiUrl}/api/v1/pipeline/download-agent`;
+    window.open(url, '_blank');
   }
 
   triggerVerify() {
