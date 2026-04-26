@@ -162,7 +162,18 @@ def get_job_videos(
 ):
     """List discovered videos for a specific job (for local agent to process)."""
     videos = db.query(ScrapedVideo).filter(ScrapedVideo.scan_job_id == job_id).all()
-    return videos
+    return [
+        {
+            "id": v.id,
+            "platform": v.platform,
+            "platform_video_id": v.platform_video_id,
+            "title": v.title,
+            "url": v.url,
+            "frame_paths": v.frame_paths,
+            "uploader": v.uploader
+        }
+        for v in videos
+    ]
 
 @router.post("/jobs/{job_id}/verify")
 def trigger_verification(
