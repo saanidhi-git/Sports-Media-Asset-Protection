@@ -154,6 +154,107 @@ def _match_against_assets(
     return detection
 
 
+def process_scraped_item(db: Session, job_id: int, item: dict):
+    """
+    Common logic to persist a scraped item, extract frames/hashes, 
+    run AI moderation, and match against assets.
+    """
+    logger.info(f"──── 🎬 Processing: {item['title'][:60]}")
+    
+    # ── AI Moderation ─────────────────────────────────
+    ai_decision, ai_reason = ai_moderate(item["title"], item.get("description", ""))
+    logger.info(f"   🤖 [AI] {ai_decision} | {ai_reason}")
+    
+    if ai_decision == "DISCUSSION":
+        logger.info(f"   ⏭️ Skipping classified as DISCUSSION.")
+        return
+
+    # Persist the scraped video record
+    scraped = ScrapedVideo(
+        scan_job_id       = job_id,
+        platform          = item["platform"],
+        platform_video_id = item["platform_video_id"],
+        title             = item["title"],
+        description       = item.get("description", ""),
+        url               = item["url"],
+        frame_paths       = item.get("frame_paths", []),
+        uploader          = item.get("uploader"),
+        like_count        = item.get("like_count"),
+        view_count        = item.get("view_count"),
+        comments          = item.get("comments", []),
+    )
+    db.add(scraped)
+    db.commit()
+    db.refresh(scraped)
+
+    # Persist the frames and their hashes to ScrapedFrame table
+    phashes = item.get("phashes", [])
+    pdq_hashes = item.get("pdq_hashes", [])
+    frame_paths = item.get("frame_paths", [])
+
+    logger.info(f"   🎞 [2/4] Saving {len(frame_paths)} extracted frames...")
+    for i, f_path in enumerate(frame_paths):
+        db.add(ScrapedFrame(
+            frame_number=i,
+            file_path=f_path,
+            phash_value=phashes[i] if i < len(phashes) else None,
+            pdq_hash=pdq_hashes[i] if i < len(pdq_hashes) else None,
+            scraped_video_id=scraped.id
+        ))
+    db.commit()
+
+    # Match against all registered assets
+    logger.info(f"   🔍 [3/4] Running Piracy Scan (pHash + PDQ + Audio + Meta)...")
+    
+    # Build scraped_text for metadata matching
+    scraped_text = f"{item['title']} {item.get('description', '')}".strip()
+    
+    _match_against_assets(
+        db,
+        scraped,
+        phashes,
+        pdq_hashes,
+        item.get("audio_fp"),
+        scraped_text=scraped_text,
+        scraped_comments=item.get("comments", []),
+        ai_decision=ai_decision,
+        ai_reason=ai_reason,
+    )
+
+def process_external_results(db: Session, job_id: int, items: list[dict]):
+    """
+    Entry point for results pushed by an external local agent.
+    """
+    import threading
+    threading.current_thread().job_id = job_id
+    
+    job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
+    if not job:
+        logger.error(f"❌ process_external_results: ScanJob {job_id} not found.")
+        return
+
+    try:
+        job.status = "PROCESSING"
+        db.commit()
+
+        logger.info(f"🚀 EXTERNAL PUSH RECEIVED — Processing {len(items)} items for Query: '{job.search_query}'")
+
+        for item in items:
+            process_scraped_item(db, job_id, item)
+
+        job.status       = "COMPLETED"
+        job.completed_at = datetime.datetime.utcnow()
+        db.commit()
+        logger.info(f"✅ EXTERNAL PUSH COMPLETED.")
+    except Exception:
+        db.rollback()
+        job.status = "FAILED"
+        db.commit()
+        logger.error(f"❌ External processing failed:\n{traceback.format_exc()}")
+    finally:
+        threading.current_thread().job_id = None
+
+
 def run_pipeline_job(
     job_id: int,
     platform_limits: Dict[str, int],
@@ -216,67 +317,7 @@ def run_pipeline_job(
                 continue
 
             for item in items:
-                logger.info(f"──── 🎬 Processing: {item['title'][:60]}")
-                
-                # ── Agent 6: AI Moderation ─────────────────────────────────
-                ai_decision, ai_reason = ai_moderate(item["title"], item.get("description", ""))
-                logger.info(f"   🤖 [AI] {ai_decision} | {ai_reason}")
-                
-                if ai_decision == "DISCUSSION":
-                    logger.info(f"   ⏭️ Skipping classified as DISCUSSION.")
-                    continue
-
-                # Persist the scraped video record
-                scraped = ScrapedVideo(
-                    scan_job_id       = job.id,
-                    platform          = item["platform"],
-                    platform_video_id = item["platform_video_id"],
-                    title             = item["title"],
-                    description       = item.get("description", ""),
-                    url               = item["url"],
-                    frame_paths       = item.get("frame_paths", []),
-                    uploader          = item.get("uploader"),
-                    like_count        = item.get("like_count"),
-                    view_count        = item.get("view_count"),
-                    comments          = item.get("comments", []),
-                )
-                db.add(scraped)
-                db.commit()
-                db.refresh(scraped)
-
-                # Persist the frames and their hashes to ScrapedFrame table
-                phashes = item.get("phashes", [])
-                pdq_hashes = item.get("pdq_hashes", [])
-                frame_paths = item.get("frame_paths", [])
-
-                logger.info(f"   🎞 [2/4] Saving {len(frame_paths)} extracted frames...")
-                for i, f_path in enumerate(frame_paths):
-                    db.add(ScrapedFrame(
-                        frame_number=i,
-                        file_path=f_path,
-                        phash_value=phashes[i] if i < len(phashes) else None,
-                        pdq_hash=pdq_hashes[i] if i < len(pdq_hashes) else None,
-                        scraped_video_id=scraped.id
-                    ))
-                db.commit()
-
-                # Match against all registered assets
-                logger.info(f"   🔍 [3/4] Running Piracy Scan (pHash + PDQ + Audio + Meta)...")
-                
-                # Build scraped_text for metadata matching
-                scraped_text = f"{item['title']} {item.get('description', '')}".strip()
-                
-                _match_against_assets(
-                    db,
-                    scraped,
-                    phashes,
-                    pdq_hashes,
-                    item.get("audio_fp"),
-                    scraped_text=scraped_text,
-                    scraped_comments=item.get("comments", []),
-                    ai_decision=ai_decision,
-                    ai_reason=ai_reason,
-                )
+                process_scraped_item(db, job_id, item)
 
         job.status       = "COMPLETED"
         job.completed_at = datetime.datetime.utcnow()

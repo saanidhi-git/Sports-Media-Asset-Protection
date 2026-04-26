@@ -72,39 +72,26 @@ class ScrapedFrameMinimal(BaseModel):
     pdq_hash: Optional[str] = None
 
 class EnrichedDetectionResult(BaseModel):
-    """Detection result joined with ScrapedVideo + matched Asset info for the UI."""
-    id: int
-    verdict: str
-    phash_score: float
-    pdq_score: float
-    audio_score: float
-    metadata_score: float
-    final_score: float
-    # Scraped video info
+    # ... (existing fields)
+    created_at: datetime
+
+
+class ExternalResult(BaseModel):
     platform: str
-    video_title: str
-    video_url: str
     platform_video_id: str
-    frames: list[str] = [] # Legacy list of paths
-    suspect_frames: list[ScrapedFrameMinimal] = []
-    # Matched asset info
-    matched_asset_id: Optional[int] = None
-    matched_asset_name: Optional[str] = None
-    matched_asset_owner: Optional[str] = None
-    best_ref_frame_path: Optional[str] = None
-    matched_asset_frames: list[AssetFrameMinimal] = []
-    # Analysis
-    frame_similarities: list[float] = [] # Per-frame pHash similarity for graphing
-    pdq_similarities: list[float] = []   # Per-frame PDQ similarity for graphing
+    title: str
+    description: Optional[str] = None
+    url: str
+    frame_paths: list[str] = []
+    phashes: list[str] = []
+    pdq_hashes: list[str] = []
+    audio_fp: Optional[str] = None
     uploader: Optional[str] = None
-    comments: list[dict] = []
     like_count: Optional[int] = None
     view_count: Optional[int] = None
-    # AI Moderation info
-    ai_decision: Optional[str] = None
-    ai_reason: Optional[str] = None
-    # Dispatch info
-    dispatch_status: str = "PENDING"
-    dispatched_at: Optional[datetime] = None
-    
-    created_at: datetime
+    comments: list[dict] = []
+
+class ExternalPushRequest(BaseModel):
+    job_id: int
+    api_key: str
+    items: list[ExternalResult]

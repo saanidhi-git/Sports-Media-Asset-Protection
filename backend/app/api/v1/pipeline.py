@@ -15,8 +15,10 @@ from app.schemas.pipeline import (
     EnrichedDetectionResult,
     ScanJobOut,
     ScanRequest,
+    ExternalPushRequest,
 )
-from app.services.pipeline.orchestrator import run_pipeline_job
+from app.services.pipeline.orchestrator import run_pipeline_job, process_external_results
+from app.core.config import settings
 import os
 from app.core.job_logging import JOB_LOGS_DIR
 
@@ -52,6 +54,34 @@ def start_scan(
         request.num_frames_per_video,
     )
     return job
+
+
+@router.post("/external-push", status_code=status.HTTP_202_ACCEPTED)
+def push_external_results(
+    request: ExternalPushRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """
+    Endpoint for local/offline agents to push scraped fingerprints back to the cloud.
+    """
+    if request.api_key != settings.EXTERNAL_AGENT_KEY:
+        raise HTTPException(status_code=403, detail="Invalid external agent API key.")
+
+    job = db.query(ScanJob).filter(ScanJob.id == request.job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Scan job not found.")
+
+    # Convert items to dict for orchestrator
+    items_dict = [item.model_dump() for item in request.items]
+
+    background_tasks.add_task(
+        process_external_results,
+        db,
+        job.id,
+        items_dict,
+    )
+    return {"status": "accepted", "job_id": job.id}
 
 
 @router.get("/jobs", response_model=list[ScanJobOut])
