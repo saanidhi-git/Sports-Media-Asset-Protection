@@ -312,15 +312,23 @@ def process_raw_external_item(
 
         # 3. Store raw JPGs on Cloudinary
         frame_urls = []
-        logger.info(f"   📤 Uploading {len(frame_bytes_list)} frames for: {scraped.platform_video_id}")
-        for b in frame_bytes_list:
+        logger.info(f"   📤 Uploading {len(frame_bytes_list)} frames for: {scraped.platform_video_id} to Cloudinary")
+        for i, b in enumerate(frame_bytes_list):
             with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
                 tmp.write(b)
                 tmp.flush()
                 tmp.close()
                 url = upload_image(tmp.name, folder="sports-guardian/scraped_frames")
-                frame_urls.append(url)
+                if url:
+                    logger.info(f"      ✅ Frame {i} uploaded: {url}")
+                    frame_urls.append(url)
+                else:
+                    logger.error(f"      ❌ Frame {i} upload returned NULL secure_url!")
                 os.remove(tmp.name)
+
+        if not frame_urls:
+            logger.error(f"   ❌ No frames were successfully uploaded to Cloudinary for {scraped.platform_video_id}")
+            return
 
         scraped.frame_paths = frame_urls
         # Clear old frames, add new placeholders linked to the URLs
@@ -332,6 +340,7 @@ def process_raw_external_item(
             ))
         
         db.commit()
+        logger.info(f"   💾 Saved {len(frame_urls)} frame URLs to ScrapedFrame table for {scraped.platform_video_id}")
 
         # Update Job Status
         all_videos = db.query(ScrapedVideo).filter(ScrapedVideo.scan_job_id == job_id).all()
@@ -395,7 +404,9 @@ def verify_scan_results(job_id: int):
             # 2. Generate Visual Hashes (pHash + PDQ) on Cloud
             current_phashes = []
             current_pdq_hashes = []
-            for frame_record in sv.frames:
+            logger.info(f"   🎞️ Generating visual hashes for {len(sv.frames)} frames...")
+            for i, frame_record in enumerate(sv.frames):
+                logger.info(f"      Downloading frame {i}: {frame_record.file_path}")
                 resp = requests.get(frame_record.file_path)
                 if resp.status_code == 200:
                     nparr = np.frombuffer(resp.content, np.uint8)
@@ -407,8 +418,14 @@ def verify_scan_results(job_id: int):
                         frame_record.pdq_hash = pdq
                         current_phashes.append(ph)
                         current_pdq_hashes.append(pdq)
+                        logger.info(f"      ✅ Frame {i} hashed (pHash={ph[:8]}..., PDQ={pdq[:8]}...)")
+                    else:
+                        logger.error(f"      ❌ Frame {i}: cv2.imdecode failed!")
+                else:
+                    logger.error(f"      ❌ Frame {i}: Download failed (Status {resp.status_code})!")
             
             db.commit() # Save hashes
+            logger.info(f"   💾 Persisted {len(current_phashes)} hashes to DB for {sv.platform_video_id}")
 
             # 3. AI Analysis & Final Matching
             ai_decision, ai_reason = ai_moderate(sv.title, sv.description or "")

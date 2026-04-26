@@ -18,35 +18,39 @@ def phash_similarity(suspect_hashes: List[str], ref_hashes: List[str]) -> float:
     if not suspect_hashes or not ref_hashes:
         return 0.0
         
-    distances = []
+    scores = []
     for s_hash in suspect_hashes:
         if not s_hash:
             continue
+        best_sim = 0.0
         try:
             s_obj = imagehash.hex_to_hash(s_hash)
             for r_hash in ref_hashes:
                 if not r_hash:
                     continue
                 r_obj = imagehash.hex_to_hash(r_hash)
-                distances.append(s_obj - r_obj)
+                dist = s_obj - r_obj
+                sim = max(0.0, 1.0 - (dist / 64.0))
+                if sim > best_sim:
+                    best_sim = sim
+            scores.append(best_sim)
         except Exception as e:
             logger.warning(f"Error calculating pHash similarity: {e}")
             
-    if not distances:
+    if not scores:
         return 0.0
         
-    min_d = min(distances)
-    score = max(0.0, 1.0 - (min_d / 64.0))
-    return score
+    return sum(scores) / len(scores)
 
 def pdq_similarity(suspect_hashes: List[str], ref_hashes: List[str]) -> float:
     if not suspect_hashes or not ref_hashes:
         return 0.0
     
-    min_dist = 256
+    scores = []
     for s_hash in suspect_hashes:
         if not s_hash:
             continue
+        best_sim = 0.0
         try:
             v_s = int(s_hash, 16)
             for r_hash in ref_hashes:
@@ -55,14 +59,17 @@ def pdq_similarity(suspect_hashes: List[str], ref_hashes: List[str]) -> float:
                 v_r = int(r_hash, 16)
                 # Hamming distance via XOR and bit count
                 dist = bin(v_s ^ v_r).count('1')
-                if dist < min_dist:
-                    min_dist = dist
+                sim = max(0.0, 1.0 - (dist / 64.0))
+                if sim > best_sim:
+                    best_sim = sim
+            scores.append(best_sim)
         except Exception as e:
             logger.warning(f"Error calculating PDQ similarity: {e}")
             
-    # Using 64 as a threshold for 0.0 score, similar to original script
-    score = max(0.0, 1.0 - (min_dist / 64.0))
-    return score
+    if not scores:
+        return 0.0
+        
+    return sum(scores) / len(scores)
 
 def audio_similarity(suspect_fp: Optional[str], ref_fp: Optional[str]) -> float:
     if not suspect_fp or not ref_fp:

@@ -35,23 +35,23 @@
           <div class="metrics-row">
             <div class="metric">
               <span class="m-label">pHash</span>
-              <span class="m-val">{{ (r.phash_score * 100).toFixed(1) }}%</span>
-              <div class="m-bar"><div class="m-fill phash" [style.width.%]="r.phash_score * 100"></div></div>
+              <span class="m-val">{{ ((r.phash_score || 0) * 100).toFixed(1) }}%</span>
+              <div class="m-bar"><div class="m-fill phash" [style.width.%]="(r.phash_score || 0) * 100"></div></div>
             </div>
             <div class="metric">
               <span class="m-label">PDQ</span>
-              <span class="m-val">{{ (r.pdq_score * 100).toFixed(1) }}%</span>
-              <div class="m-bar"><div class="m-fill pdq" [style.width.%]="r.pdq_score * 100"></div></div>
+              <span class="m-val">{{ ((r.pdq_score || 0) * 100).toFixed(1) }}%</span>
+              <div class="m-bar"><div class="m-fill pdq" [style.width.%]="(r.pdq_score || 0) * 100"></div></div>
             </div>
             <div class="metric">
               <span class="m-label">AUDIO</span>
-              <span class="m-val">{{ (r.audio_score * 100).toFixed(1) }}%</span>
-              <div class="m-bar"><div class="m-fill audio" [style.width.%]="r.audio_score * 100"></div></div>
+              <span class="m-val">{{ ((r.audio_score || 0) * 100).toFixed(1) }}%</span>
+              <div class="m-bar"><div class="m-fill audio" [style.width.%]="(r.audio_score || 0) * 100"></div></div>
             </div>
             <div class="metric final">
               <span class="m-label">TOTAL</span>
-              <span class="m-val">{{ (r.final_score * 100).toFixed(1) }}%</span>
-              <div class="m-bar"><div class="m-fill final-bar" [style.width.%]="r.final_score * 100"></div></div>
+              <span class="m-val">{{ ((r.final_score || 0) * 100).toFixed(1) }}%</span>
+              <div class="m-bar"><div class="m-fill final-bar" [style.width.%]="(r.final_score || 0) * 100"></div></div>
             </div>
           </div>
         </div>
@@ -115,12 +115,12 @@
                   <td class="hash-text">{{ r.matched_asset_frames[i]?.pdq_hash?.substring(0, 16) }}...</td>
                   <td>
                     <div class="score-mini-pill phash">
-                        {{ (r.frame_similarities[i] * 100).toFixed(1) }}%
+                        {{ ((r.frame_similarities[i] || 0) * 100).toFixed(1) }}%
                     </div>
                   </td>
                   <td>
                     <div class="score-mini-pill pdq">
-                        {{ (r.pdq_similarities[i] * 100).toFixed(1) }}%
+                        {{ ((r.pdq_similarities[i] || 0) * 100).toFixed(1) }}%
                     </div>
                   </td>
                   <td><span class="tiny-badge" [class.match]="r.frame_similarities[i] > 0.8">{{ r.frame_similarities[i] > 0.8 ? 'MATCH' : 'REVIEW' }}</span></td>
@@ -178,11 +178,11 @@
                 <div class="comparison-stats">
                     <div class="stat-item">
                         <span class="l">pHash Similarity</span>
-                        <span class="v">{{ (r.frame_similarities[pair.index-1] * 100).toFixed(2) }}%</span>
+                        <span class="v">{{ ((r.frame_similarities[pair.index-1] || 0) * 100).toFixed(2) }}%</span>
                     </div>
                     <div class="stat-item">
                         <span class="l">PDQ Similarity</span>
-                        <span class="v">{{ (r.pdq_similarities[pair.index-1] * 100).toFixed(2) }}%</span>
+                        <span class="v">{{ ((r.pdq_similarities[pair.index-1] || 0) * 100).toFixed(2) }}%</span>
                     </div>
                 </div>
             </div>

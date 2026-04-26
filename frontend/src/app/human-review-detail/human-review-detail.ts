@@ -196,19 +196,19 @@ export class HumanReviewDetail implements OnInit {
             <table style="width: 100%; border-collapse: collapse; color: #fff; font-size: 13px;">
               <tr>
                 <td style="padding: 8px 0; color: #888;">pHash Similarity:</td>
-                <td style="padding: 8px 0; text-align: right; color: #00f3ff; font-weight: bold;">${(r.phash_score * 100).toFixed(2)}%</td>
+                <td style="padding: 8px 0; text-align: right; color: #00f3ff; font-weight: bold;">${((r.phash_score || 0) * 100).toFixed(2)}%</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #888;">PDQ Alignment:</td>
-                <td style="padding: 8px 0; text-align: right; color: #00f3ff; font-weight: bold;">${(r.pdq_score * 100).toFixed(2)}%</td>
+                <td style="padding: 8px 0; text-align: right; color: #00f3ff; font-weight: bold;">${((r.pdq_score || 0) * 100).toFixed(2)}%</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #888;">Audio Sync Match:</td>
-                <td style="padding: 8px 0; text-align: right; color: #00f3ff; font-weight: bold;">${(r.audio_score * 100).toFixed(2)}%</td>
+                <td style="padding: 8px 0; text-align: right; color: #00f3ff; font-weight: bold;">${((r.audio_score || 0) * 100).toFixed(2)}%</td>
               </tr>
               <tr style="border-top: 1px solid #333;">
                 <td style="padding: 12px 0; color: #fff; font-weight: bold;">MATCH CONFIDENCE:</td>
-                <td style="padding: 12px 0; text-align: right; color: #00f3ff; font-weight: bold; font-size: 20px;">${(r.final_score * 100).toFixed(2)}%</td>
+                <td style="padding: 12px 0; text-align: right; color: #00f3ff; font-weight: bold; font-size: 20px;">${((r.final_score || 0) * 100).toFixed(2)}%</td>
               </tr>
             </table>
           </div>
