@@ -38,6 +38,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://sports-media-asset-protection-frontend.onrender.com",
+        "https://sports-media-asset-protection-frontend.onrender.com/",
         "http://localhost:4200",
         "http://localhost:8080",
     ],
