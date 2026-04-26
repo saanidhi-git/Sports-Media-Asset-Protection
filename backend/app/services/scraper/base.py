@@ -88,7 +88,8 @@ def run_ytdlp(url: str, output_path: str, timeout: int = 300, download_sections:
     try:
         cmd = [
             "yt-dlp", "--no-warnings", "--quiet",
-            "--extractor-args", "youtube:player_client=web,default",
+            "--username", "oauth2", "--password", "",
+            "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
             "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
             "-o", output_path, "--no-playlist"
@@ -112,7 +113,8 @@ def get_stream_url(url: str, timeout: int = 30) -> str | None:
         result = subprocess.run(
             [
                 "yt-dlp", "--no-warnings", "--quiet",
-                "--extractor-args", "youtube:player_client=web,default",
+                "--username", "oauth2", "--password", "",
+                "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
                 "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                 "-f", "bestvideo/best",
                 "--get-url", "--no-playlist", url,
@@ -133,7 +135,8 @@ def _probe_duration(url: str, timeout: int = 30) -> float | None:
         res = subprocess.run(
             [
                 "yt-dlp", "--no-warnings", "--quiet",
-                "--extractor-args", "youtube:player_client=web,default",
+                "--username", "oauth2", "--password", "",
+                "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
                 "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                 "--print", "duration", "--no-playlist", url,
             ],
@@ -240,7 +243,8 @@ def get_audio_fp_from_stream(url: str, duration_sec: int = settings.AUDIO_SEGMEN
         result = subprocess.run(
             [
                 "yt-dlp", "--no-warnings", "--quiet",
-                "--extractor-args", "youtube:player_client=web,default",
+                "--username", "oauth2", "--password", "",
+                "--extractor-args", "youtube:player_client=web,default;po_token=web+generated",
                 "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                 "-f", "bestaudio", "--extract-audio", "--audio-format", "m4a",
                 "--download-sections", f"*0-{duration_sec}",
