@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../core/services/auth.service';
 import { SidebarComponent } from '../core/components/sidebar/sidebar';
+import { environment } from '../../environments/environment';
 
 interface ScanJob {
   id: number;
@@ -24,6 +25,7 @@ interface ScanJob {
 export class ScanJobsHistory implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
+  private readonly apiUrl = environment.apiUrl;
 
   jobs = signal<ScanJob[]>([]);
   loading = signal<boolean>(true);
@@ -34,7 +36,7 @@ export class ScanJobsHistory implements OnInit {
 
   fetchJobs() {
     this.loading.set(true);
-    this.http.get<ScanJob[]>('/api/pipeline/jobs').subscribe({
+    this.http.get<ScanJob[]>(`${this.apiUrl}/api/v1/pipeline/jobs`).subscribe({
       next: (data) => {
         this.jobs.set(data);
         this.loading.set(false);

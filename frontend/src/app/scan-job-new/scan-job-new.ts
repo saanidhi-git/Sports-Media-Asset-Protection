@@ -5,6 +5,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../core/services/auth.service';
 import { SidebarComponent } from '../core/components/sidebar/sidebar';
+import { environment } from '../../environments/environment';
 
 interface ScanJob {
   id: number;
@@ -53,6 +54,7 @@ export class ScanJobNew implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
+  private readonly apiUrl = environment.apiUrl;
 
   phase = signal<Phase>('form');
   scanForm!: FormGroup;
@@ -90,7 +92,7 @@ export class ScanJobNew implements OnInit, OnDestroy {
   loadExistingJob(jobId: number) {
     this.currentJobId.set(jobId);
     this.phase.set('processing');
-    this.http.get<ScanJob>(`/api/pipeline/jobs/${jobId}`).subscribe({
+    this.http.get<ScanJob>(`${this.apiUrl}/api/v1/pipeline/jobs/${jobId}`).subscribe({
       next: (job) => {
         this.currentJob.set(job);
         if (job.status === 'COMPLETED') {
@@ -146,7 +148,7 @@ export class ScanJobNew implements OnInit, OnDestroy {
     this.addLog(`SCAN INITIATED: "${payload.search_query}"`);
     this.addLog(`YT=${payload.youtube_limit}  IG=${payload.instagram_limit}  RD=${payload.reddit_limit}  Frames=${payload.num_frames_per_video}`);
 
-    this.http.post<ScanJob>('/api/pipeline/scan', payload).subscribe({
+    this.http.post<ScanJob>(`${this.apiUrl}/api/v1/pipeline/scan`, payload).subscribe({
       next: (job) => {
         this.currentJobId.set(job.id);
         this.currentJob.set(job);
@@ -164,7 +166,7 @@ export class ScanJobNew implements OnInit, OnDestroy {
   // ── POLLING ───────────────────────────────
   private startPolling(jobId: number) {
     this.pollTimer = setInterval(() => {
-      this.http.get<ScanJob>(`/api/pipeline/jobs/${jobId}`).subscribe({
+      this.http.get<ScanJob>(`${this.apiUrl}/api/v1/pipeline/jobs/${jobId}`).subscribe({
         next: (job) => {
           this.currentJob.set(job);
           if (job.status === 'COMPLETED') {
@@ -182,7 +184,7 @@ export class ScanJobNew implements OnInit, OnDestroy {
       });
       
       // Also poll live minute-to-minute logs from the backend
-      this.http.get<string[]>(`/api/pipeline/jobs/${jobId}/logs`).subscribe({
+      this.http.get<string[]>(`${this.apiUrl}/api/v1/pipeline/jobs/${jobId}/logs`).subscribe({
         next: (serverLogs) => {
           if (serverLogs && serverLogs.length > 0) {
              // We replace the entire local processingLogs array with the server logs
@@ -198,7 +200,7 @@ export class ScanJobNew implements OnInit, OnDestroy {
 
   // ── RESULTS ───────────────────────────────
   private fetchResults(jobId: number) {
-    this.http.get<DetectionResult[]>(`/api/pipeline/results/${jobId}`).subscribe({
+    this.http.get<DetectionResult[]>(`${this.apiUrl}/api/v1/pipeline/results/${jobId}`).subscribe({
       next: (data) => {
         this.results.set(data);
         this.addLog(`LOADED ${data.length} detection results`);
