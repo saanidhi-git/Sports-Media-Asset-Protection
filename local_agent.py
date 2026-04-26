@@ -17,32 +17,27 @@ EXTERNAL_AGENT_KEY = "dev-key-123"
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger("LocalAgent")
 
-def get_video_info(query):
-    """Uses yt-dlp to search for one video and get metadata."""
-    cmd = [
-        "yt-dlp", "--no-warnings", "--quiet", "--print", 
-        "%(id)s|||%(title)s|||%(description)s|||%(webpage_url)s|||%(channel)s",
-        f"ytsearch1:{query}"
-    ]
+def fetch_videos_to_process(job_id):
+    """Asks Render for the list of URLs found during the Discovery phase."""
+    url = f"{API_BASE_URL}/pipeline/jobs/{job_id}/videos"
     try:
-        res = subprocess.check_output(cmd, text=True).strip()
-        parts = res.split("|||")
-        return {
-            "platform": "youtube",
-            "platform_video_id": parts[0],
-            "title": parts[1],
-            "description": parts[2],
-            "url": parts[3],
-            "uploader": parts[4]
-        }
+        resp = requests.get(url)
+        if resp.status_code == 200:
+            return resp.json()
+        else:
+            logger.error(f"Failed to fetch videos ({resp.status_code}): {resp.text}")
+            return []
     except Exception as e:
-        logger.error(f"Failed to find video: {e}")
-        return None
+        logger.error(f"Network error fetching videos: {e}")
+        return []
 
-def download_and_extract(url, tmp_dir):
-    """Downloads first 60s and extracts 8 frames + audio."""
-    video_path = os.path.join(tmp_dir, "video.mp4")
-    audio_path = os.path.join(tmp_dir, "audio.m4a")
+def download_and_extract(video_info, tmp_dir):
+    """Downloads first 60s and extracts 8 frames + audio for a specific video."""
+    url = video_info["url"]
+    vid = video_info["platform_video_id"]
+    
+    video_path = os.path.join(tmp_dir, f"video_{vid}.mp4")
+    audio_path = os.path.join(tmp_dir, f"audio_{vid}.m4a")
     
     # 1. Download segment
     logger.info(f"📥 Downloading segment from {url}...")
@@ -74,43 +69,50 @@ def download_and_extract(url, tmp_dir):
             cap.set(cv2.CAP_PROP_POS_FRAMES, i * step)
             ret, frame = cap.read()
             if ret:
-                frame_file = os.path.join(tmp_dir, f"frame_{i}.jpg")
+                frame_file = os.path.join(tmp_dir, f"frame_{vid}_{i}.jpg")
                 cv2.imwrite(frame_file, frame)
                 frames_to_send.append(frame_file)
     cap.release()
     return frames_to_send, audio_path
 
-def run_local_raw_scan(job_id, query):
-    info = get_video_info(query)
-    if not info: return
+def process_job(job_id):
+    videos = fetch_videos_to_process(job_id)
+    if not videos:
+        logger.warning(f"No videos found for Job #{job_id}. Did Discovery finish?")
+        return
 
-    with tempfile.TemporaryDirectory() as tmp:
-        frames, audio = download_and_extract(info["url"], tmp)
-        
-        # 4. Push to Render
-        logger.info(f"🚀 Pushing raw data to Cloud: {API_BASE_URL}")
-        
-        files = [("frames", (os.path.basename(f), open(f, "rb"), "image/jpeg")) for f in frames]
-        if os.path.exists(audio):
-            files.append(("audio", ("audio.m4a", open(audio, "rb"), "audio/mp4")))
+    logger.info(f"🚀 Found {len(videos)} videos to process locally.")
 
-        data = {
-            "job_id": job_id,
-            "api_key": EXTERNAL_AGENT_KEY,
-            "metadata_json": json.dumps(info)
-        }
+    for v in videos:
+        logger.info(f"🎬 Processing: {v['title']}")
+        with tempfile.TemporaryDirectory() as tmp:
+            frames, audio = download_and_extract(v, tmp)
+            
+            # Push to Render
+            logger.info(f"📤 Pushing raw data for '{v['title']}' to Cloud...")
+            files = [("frames", (os.path.basename(f), open(f, "rb"), "image/jpeg")) for f in frames]
+            if os.path.exists(audio):
+                files.append(("audio", (os.path.basename(audio), open(audio, "rb"), "audio/mp4")))
 
-        try:
-            resp = requests.post(f"{API_BASE_URL}/pipeline/external-push-raw", data=data, files=files)
-            if resp.status_code == 202:
-                logger.info("✅ SUCCESS: Cloud received raw frames and is processing!")
-            else:
-                logger.error(f"❌ FAILED ({resp.status_code}): {resp.text}")
-        except Exception as e:
-            logger.error(f"Network error: {e}")
+            data = {
+                "job_id": job_id,
+                "api_key": EXTERNAL_AGENT_KEY,
+                "metadata_json": json.dumps(v)
+            }
+
+            try:
+                resp = requests.post(f"{API_BASE_URL}/pipeline/external-push-raw", data=data, files=files)
+                if resp.status_code == 202:
+                    logger.info(f"✅ SUCCESS: Pushed data for {v['platform_video_id']}")
+                else:
+                    logger.error(f"❌ FAILED ({resp.status_code}): {resp.text}")
+            except Exception as e:
+                logger.error(f"Network error pushing data: {e}")
+
+    logger.info("🏁 Local extraction complete. Please return to the website and click 'VERIFY'!")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python local_agent.py <job_id> <query>")
+    if len(sys.argv) < 2:
+        print("Usage: python local_agent.py <job_id>")
         sys.exit(1)
-    run_local_raw_scan(int(sys.argv[1]), " ".join(sys.argv[2:]))
+    process_job(int(sys.argv[1]))

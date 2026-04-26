@@ -279,31 +279,107 @@
 
 .text-neon { color: var(--neon-blue); }
 
-.steps-box {
+.steps-horizontal {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.step-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--dark-border);
+  padding: 12px;
+  border-radius: 4px;
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  margin: 15px 0;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  transition: all 0.3s;
+  opacity: 0.5;
 }
 
-.step {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.step-card.active {
+  opacity: 1;
+  border-color: var(--neon-blue);
+  background: rgba(0, 243, 255, 0.05);
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.1);
 }
 
-.step-num {
-  background: var(--neon-blue);
-  color: #000;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.step-header {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--dark-text-muted);
+}
+
+.code-block.mini {
+  padding: 6px 10px;
   font-size: 10px;
-  font-weight: bold;
-  flex-shrink: 0;
+}
+
+/* DISCOVERED VIDEOS LIST */
+.discovered-videos-card {
+  margin-bottom: 25px;
+}
+
+.video-mini-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.video-mini-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--dark-border);
+  border-radius: 4px;
+}
+
+.v-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.v-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--dark-text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v-meta {
+  font-size: 10px;
+  color: var(--dark-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v-status {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+
+.v-status.pending {
+  background: rgba(255, 165, 0, 0.1);
+  color: #ffa500;
+  border: 1px solid rgba(255, 165, 0, 0.3);
+}
+
+.v-status.ready {
+  background: rgba(74, 222, 128, 0.1);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
 }
 
 .code-block {

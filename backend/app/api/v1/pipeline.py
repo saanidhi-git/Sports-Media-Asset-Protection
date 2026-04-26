@@ -18,7 +18,7 @@ from app.schemas.pipeline import (
     ExternalPushRequest,
 )
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, UploadFile, File, Form
-from app.services.pipeline.orchestrator import run_pipeline_job, process_external_results, process_raw_external_item
+from app.services.pipeline.orchestrator import run_pipeline_job, process_external_results, process_raw_external_item, verify_scan_results
 import json
 
 @router.post("/external-push-raw", status_code=status.HTTP_202_ACCEPTED)
@@ -108,6 +108,29 @@ def download_agent():
         filename="local_agent.py",
         media_type="application/octet-stream"
     )
+
+@router.get("/jobs/{job_id}/videos")
+def get_job_videos(
+    job_id: int,
+    db: Session = Depends(get_db),
+):
+    """List discovered videos for a specific job (for local agent to process)."""
+    videos = db.query(ScrapedVideo).filter(ScrapedVideo.scan_job_id == job_id).all()
+    return videos
+
+@router.post("/jobs/{job_id}/verify")
+def trigger_verification(
+    job_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """Manually trigger hashing and matching after frames are pushed."""
+    job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+
+    background_tasks.add_task(verify_scan_results, db, job_id)
+    return {"status": "verification_started"}
 
 @router.post("/external-push", status_code=status.HTTP_202_ACCEPTED)
 def push_external_results(

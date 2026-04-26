@@ -168,7 +168,7 @@ def process_raw_external_item(
 ):
     """
     Handles raw bytes from a local agent. Generates fingerprints ON THE CLOUD
-    and then proceeds with the normal pipeline.
+    and then STOPS. Final verification happens when the user clicks the button.
     """
     import threading
     threading.current_thread().job_id = job_id
@@ -178,9 +178,9 @@ def process_raw_external_item(
     import tempfile
     import os
 
-    logger.info(f"📥 EXTERNAL RAW DATA RECEIVED — Starting cloud processing for Job {job_id}")
+    logger.info(f"📥 EXTERNAL RAW DATA RECEIVED — Starting cloud extraction for Job {job_id}")
     logger.info(f"   (Extraction handled by Edge Node / Local Agent)")
-    logger.info(f"──── 🎬 Processing: {metadata['title'][:60]}")
+    logger.info(f"──── 🎬 Extracting: {metadata['title'][:60]}")
 
     phashes = []
     pdq_hashes = []
@@ -189,7 +189,6 @@ def process_raw_external_item(
     # 1. Process Frames: Hash & Upload
     logger.info(f"   🎞️ Generating pHash & PDQ for {len(frame_bytes_list)} frames on cloud...")
     for i, b in enumerate(frame_bytes_list):
-        # Convert bytes to cv2 frame for our existing hashing utils
         nparr = np.frombuffer(b, np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
@@ -197,7 +196,6 @@ def process_raw_external_item(
             phashes.append(get_phash(frame))
             pdq_hashes.append(get_pdq(frame))
             
-            # Temporary file for Cloudinary upload
             with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
                 cv2.imwrite(tmp.name, frame)
                 url = upload_image(tmp.name, folder="sports-guardian/scraped_frames")
@@ -207,132 +205,98 @@ def process_raw_external_item(
     # 2. Process Audio
     final_audio_fp = None
     if audio_bytes:
-        logger.info(f"   🎵 Generating Audio Fingerprint (ChromaPrint) on cloud...")
+        logger.info(f"   🎵 Generating Audio Fingerprint on cloud...")
         with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as tmp:
             tmp.write(audio_bytes)
             tmp.flush()
             final_audio_fp = get_audio_fp(tmp.name)
             os.remove(tmp.name)
 
-    # 3. Use the existing item processor logic
-    item_for_pipeline = {
-        **metadata,
-        "phashes": phashes,
-        "pdq_hashes": pdq_hashes,
-        "frame_paths": frame_urls,
-        "audio_fp": final_audio_fp,
-    }
-    
-    process_scraped_item(db, job_id, item_for_pipeline)
-
-    # 4. Mark job as completed
-    job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
-    if job:
-        job.status = "COMPLETED"
-        job.completed_at = datetime.datetime.utcnow()
-        db.commit()
-        logger.info(f"✅ EXTERNAL RAW PUSH COMPLETED for Job {job_id}")
-
-def process_scraped_item(db: Session, job_id: int, item: dict):
-    """
-    Common logic to persist a scraped item, extract frames/hashes, 
-    run AI moderation, and match against assets.
-    """
-    logger.info(f"──── 🎬 Processing: {item['title'][:60]}")
-    
-    # ── AI Moderation ─────────────────────────────────
-    ai_decision, ai_reason = ai_moderate(item["title"], item.get("description", ""))
-    logger.info(f"   🤖 [AI] {ai_decision} | {ai_reason}")
-    
-    if ai_decision == "DISCUSSION":
-        logger.info(f"   ⏭️ Skipping classified as DISCUSSION.")
-        return
-
-    # Persist the scraped video record
+    # 3. Persist the scraped video record (Status: READY_FOR_VERIFICATION)
     scraped = ScrapedVideo(
         scan_job_id       = job_id,
-        platform          = item["platform"],
-        platform_video_id = item["platform_video_id"],
-        title             = item["title"],
-        description       = item.get("description", ""),
-        url               = item["url"],
-        frame_paths       = item.get("frame_paths", []),
-        uploader          = item.get("uploader"),
-        like_count        = item.get("like_count"),
-        view_count        = item.get("view_count"),
-        comments          = item.get("comments", []),
+        platform          = metadata["platform"],
+        platform_video_id = metadata["platform_video_id"],
+        title             = metadata["title"],
+        description       = metadata.get("description", ""),
+        url               = metadata["url"],
+        frame_paths       = frame_urls,
+        uploader          = metadata.get("uploader"),
+        like_count        = metadata.get("like_count"),
+        view_count        = metadata.get("view_count"),
+        comments          = metadata.get("comments", []),
     )
     db.add(scraped)
     db.commit()
     db.refresh(scraped)
 
-    # Persist the frames and their hashes to ScrapedFrame table
-    phashes = item.get("phashes", [])
-    pdq_hashes = item.get("pdq_hashes", [])
-    frame_paths = item.get("frame_paths", [])
-
-    logger.info(f"   🎞 [2/4] Saving {len(frame_paths)} extracted frames...")
-    for i, f_path in enumerate(frame_paths):
+    for i, f_url in enumerate(frame_urls):
         db.add(ScrapedFrame(
             frame_number=i,
-            file_path=f_path,
+            file_path=f_url,
             phash_value=phashes[i] if i < len(phashes) else None,
             pdq_hash=pdq_hashes[i] if i < len(pdq_hashes) else None,
             scraped_video_id=scraped.id
         ))
     db.commit()
 
-    # Match against all registered assets
-    logger.info(f"   🔍 [3/4] Running Piracy Scan (pHash + PDQ + Audio + Meta)...")
-    
-    # Build scraped_text for metadata matching
-    scraped_text = f"{item['title']} {item.get('description', '')}".strip()
-    
-    _match_against_assets(
-        db,
-        scraped,
-        phashes,
-        pdq_hashes,
-        item.get("audio_fp"),
-        scraped_text=scraped_text,
-        scraped_comments=item.get("comments", []),
-        ai_decision=ai_decision,
-        ai_reason=ai_reason,
-    )
+    # 4. Mark job as waiting for user verification
+    job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
+    if job:
+        job.status = "READY_FOR_VERIFICATION"
+        db.commit()
+        logger.info(f"✅ DATA READY — Job {job_id} is waiting for user to click VERIFY.")
 
-def process_external_results(db: Session, job_id: int, items: list[dict]):
+def verify_scan_results(db: Session, job_id: int):
     """
-    Entry point for results pushed by an external local agent.
+    The final phase: Runs AI moderation and database matching on the
+    frames that were pushed from the local agent.
     """
     import threading
     threading.current_thread().job_id = job_id
     
     job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
-    if not job:
-        logger.error(f"❌ process_external_results: ScanJob {job_id} not found.")
-        return
+    if not job: return
 
     try:
-        job.status = "PROCESSING"
+        job.status = "VERIFYING"
         db.commit()
 
-        logger.info(f"🚀 EXTERNAL PUSH RECEIVED — Processing {len(items)} items for Query: '{job.search_query}'")
+        logger.info(f"🔍 FINAL VERIFICATION STARTED — Job {job_id}")
+        
+        scraped_videos = db.query(ScrapedVideo).filter(ScrapedVideo.scan_job_id == job_id).all()
+        for sv in scraped_videos:
+            logger.info(f"──── 🎬 Verifying: {sv.title[:60]}")
+            
+            # Get hashes from ScrapedFrame table
+            phashes = [f.phash_value for f in sv.frames if f.phash_value]
+            pdq_hashes = [f.pdq_hash for f in sv.frames if f.pdq_hash]
+            
+            # AI Moderation
+            ai_decision, ai_reason = ai_moderate(sv.title, sv.description or "")
+            logger.info(f"   🤖 [AI] {ai_decision} | {ai_reason}")
 
-        for item in items:
-            process_scraped_item(db, job_id, item)
+            # Matching logic
+            scraped_text = f"{sv.title} {sv.description or ''}".strip()
+            _match_against_assets(
+                db, sv, phashes, pdq_hashes, sv.audio_fp,
+                scraped_text=scraped_text,
+                scraped_comments=sv.comments or [],
+                ai_decision=ai_decision,
+                ai_reason=ai_reason
+            )
 
-        job.status       = "COMPLETED"
+        job.status = "COMPLETED"
         job.completed_at = datetime.datetime.utcnow()
         db.commit()
-        logger.info(f"✅ EXTERNAL PUSH COMPLETED.")
+        logger.info(f"✅ ALL VERIFICATIONS COMPLETED.")
     except Exception:
         db.rollback()
         job.status = "FAILED"
         db.commit()
-        logger.error(f"❌ External processing failed:\n{traceback.format_exc()}")
+        logger.error(f"❌ Verification failed:\n{traceback.format_exc()}")
     finally:
         threading.current_thread().job_id = None
-
 
 def run_pipeline_job(
     job_id: int,
@@ -340,8 +304,7 @@ def run_pipeline_job(
     num_frames_per_video: int = 8,
 ):
     """
-    Background entry-point called by FastAPI BackgroundTasks.
-    Accepts per-platform limits: {"youtube": 3, "instagram": 2, "reddit": 4}
+    Phase 1: Discovery only. Finds URLs and lists them for the user.
     """
     import threading
     from app.db.session import SessionLocal
@@ -349,65 +312,63 @@ def run_pipeline_job(
     
     db = SessionLocal()
     job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
-    if not job:
-        logger.error(f"❌ run_pipeline_job: ScanJob {job_id} not found.")
-        db.close()
-        threading.current_thread().job_id = None
-        return
+    if not job: return
 
     try:
-        job.status = "PROCESSING"
+        job.status = "DISCOVERY_ACTIVE"
         db.commit()
 
-        logger.info(f"🚀 SCAN OPERATION STARTED — Query: '{job.search_query}'")
-        logger.info(f"   Platforms: {', '.join([f'{k}({v})' for k,v in platform_limits.items()])}")
+        logger.info(f"🔍 PHASE 1: DISCOVERY — Query: '{job.search_query}'")
 
-        # Import scrapers here (lazy) so missing optional deps don't crash startup
         from app.services.scraper import youtube as yt_scraper
         from app.services.scraper import instagram as ig_scraper
-        from app.services.scraper import reddit as rd_scraper
 
-        scraper_map = {
-            "youtube":   yt_scraper,
-            "instagram": ig_scraper,
-            "reddit":    rd_scraper,
-        }
-
-        for platform, limit in platform_limits.items():
-            scraper = scraper_map.get(platform)
-            if not scraper:
-                logger.warning(f"⚠️ Unknown platform: {platform}")
-                continue
-
-            icon = {"youtube": "🔴", "instagram": "📷", "reddit": "🟠"}.get(platform, "📹")
-            logger.info(f"══════════════════════════════════════════════════")
-            logger.info(f"{icon} SCRAPING {platform.upper()} — limit={limit}")
-            logger.info(f"══════════════════════════════════════════════════")
-            
+        # We only do Search API calls here (No Downloading)
+        discovered_count = 0
+        
+        # YouTube Search
+        if "youtube" in platform_limits:
+            logger.info(f"🔴 Searching YouTube...")
             try:
-                items = scraper.scrape_and_fingerprint(
-                    job.search_query,
-                    limit=limit,
-                    num_frames=num_frames_per_video,
-                    early_exit_score_fn=_make_score_fn(),
-                )
-            except Exception as e:
-                logger.error(f"❌ Scraper {platform} failed: {e}", exc_info=True)
-                continue
+                items = yt_scraper._api_search(job.search_query, platform_limits["youtube"])
+                for item in items:
+                    vid = item["id"]["videoId"]
+                    db.add(ScrapedVideo(
+                        scan_job_id=job.id, platform="youtube", platform_video_id=vid,
+                        title=item["snippet"]["title"], description=item["snippet"]["description"],
+                        url=f"https://www.youtube.com/watch?v={vid}",
+                        uploader=item["snippet"]["channelTitle"],
+                        status="DISCOVERED" # Custom field or we use this info in UI
+                    ))
+                    discovered_count += 1
+            except Exception as e: logger.error(f"YT Search failed: {e}")
 
-            for item in items:
-                process_scraped_item(db, job_id, item)
+        # Instagram Search
+        if "instagram" in platform_limits:
+            logger.info(f"📷 Searching Instagram...")
+            try:
+                raw_results = ig_scraper._tavily_search(job.search_query)
+                for r in raw_results[:platform_limits["instagram"]]:
+                    url = r.get("url", "")
+                    if "/reel/" in url or "/p/" in url:
+                        vid = url.split("/")[-2]
+                        db.add(ScrapedVideo(
+                            scan_job_id=job.id, platform="instagram", platform_video_id=vid,
+                            title=r.get("title", f"Instagram Reel {vid}"), 
+                            description=r.get("content", ""), url=url, status="DISCOVERED"
+                        ))
+                        discovered_count += 1
+            except Exception as e: logger.error(f"IG Search failed: {e}")
 
-        job.status       = "COMPLETED"
-        job.completed_at = datetime.datetime.utcnow()
+        job.status = "WAITING_FOR_LOCAL_AGENT"
         db.commit()
-        logger.info(f"✅ SCAN OPERATION COMPLETED.")
+        logger.info(f"✅ DISCOVERY FINISHED: Found {discovered_count} targets. Waiting for Local Agent.")
 
     except Exception:
         db.rollback()
         job.status = "FAILED"
         db.commit()
-        logger.error(f"❌ ScanJob {job_id} failed:\n{traceback.format_exc()}")
+        logger.error(f"❌ Discovery failed:\n{traceback.format_exc()}")
     finally:
         db.close()
         threading.current_thread().job_id = None

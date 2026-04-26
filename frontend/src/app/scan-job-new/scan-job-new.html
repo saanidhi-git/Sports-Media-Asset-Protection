@@ -132,25 +132,49 @@
     </header>
 
     <div class="processing-layout">
-      <!-- HYBRID MODE INSTRUCTIONS -->
+      <!-- HYBRID MODE INTERACTIVE STEPS -->
       <div class="card hybrid-instructions-card">
-        <h3 class="card-title text-neon">🚀 HYBRID SCANNING ENABLED</h3>
-        <p class="dim">YouTube/Instagram often block cloud servers. For a perfect demo, run the scan logic from your local machine using our Agent script.</p>
+        <h3 class="card-title text-neon">🚀 INTERACTIVE HYBRID SCANNING</h3>
+        <p class="dim">Discovery phase complete. Please use your local machine to extract frames for the videos found below.</p>
         
-        <div class="steps-box">
-          <div class="step">
-            <span class="step-num">1</span>
-            <button class="btn btn-secondary btn-sm" (click)="downloadAgent()">DOWNLOAD AGENT.PY</button>
+        <div class="steps-horizontal">
+          <div class="step-card" [class.active]="currentJob()?.status === 'WAITING_FOR_LOCAL_AGENT'">
+            <div class="step-header">STEP 1: SETUP</div>
+            <button class="btn btn-secondary btn-sm" (click)="downloadAgent()">DOWNLOAD AGENT</button>
           </div>
-          <div class="step">
-            <span class="step-num">2</span>
-            <p>Run this command on your laptop terminal:</p>
-            <div class="code-block">
-              python local_agent.py {{ currentJobId() }} "{{ currentJob()?.search_query }}"
+          
+          <div class="step-card" [class.active]="currentJob()?.status === 'WAITING_FOR_LOCAL_AGENT'">
+            <div class="step-header">STEP 2: EXTRACT</div>
+            <div class="code-block mini">python local_agent.py {{ currentJobId() }}</div>
+            <small class="text-yellow">Run this on your laptop</small>
+          </div>
+
+          <div class="step-card" [class.active]="currentJob()?.status === 'READY_FOR_VERIFICATION'">
+            <div class="step-header">STEP 3: ANALYZE</div>
+            <button class="btn btn-primary btn-sm" 
+                    [disabled]="currentJob()?.status !== 'READY_FOR_VERIFICATION'"
+                    (click)="triggerVerify()">
+              VERIFY & MATCH
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DISCOVERED VIDEOS (Pending Extraction) -->
+      <div class="card discovered-videos-card" *ngIf="discoveredVideos().length > 0 && currentJob()?.status !== 'COMPLETED'">
+        <h3 class="card-title">DISCOVERED TARGETS ({{ discoveredVideos().length }})</h3>
+        <div class="video-mini-list">
+          <div *ngFor="let v of discoveredVideos()" class="video-mini-item">
+            <span class="v-icon">{{ getPlatformIcon(v.platform) }}</span>
+            <div class="v-info">
+              <div class="v-title">{{ v.title }}</div>
+              <div class="v-meta">{{ v.uploader }} • {{ v.url }}</div>
+            </div>
+            <div class="v-status" [ngClass]="v.frame_paths?.length ? 'ready' : 'pending'">
+              {{ v.frame_paths?.length ? 'READY' : 'WAITING FOR AGENT' }}
             </div>
           </div>
         </div>
-        <p class="small text-yellow">The agent will scrape locally and push the data back to this dashboard live!</p>
       </div>
 
       <!-- PROGRESS CARD -->

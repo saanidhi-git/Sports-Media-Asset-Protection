@@ -64,6 +64,7 @@ export class ScanJobNew implements OnInit, OnDestroy {
   currentJob = signal<ScanJob | null>(null);
   pollTimer: any = null;
   processingLogs = signal<string[]>([]);
+  discoveredVideos = signal<any[]>([]);
 
   // Results state
   results = signal<DetectionResult[]>([]);
@@ -187,13 +188,20 @@ export class ScanJobNew implements OnInit, OnDestroy {
       this.http.get<string[]>(`${this.apiUrl}/api/v1/pipeline/jobs/${jobId}/logs`).subscribe({
         next: (serverLogs) => {
           if (serverLogs && serverLogs.length > 0) {
-             // We replace the entire local processingLogs array with the server logs
-             // But we only do it if there are server logs, to preserve local init logs if the file isn't created yet
              this.processingLogs.set(serverLogs);
              this.scrollToBottom();
           }
         }
       });
+
+      // Poll discovered videos
+      if (this.phase() === 'processing') {
+        this.http.get<any[]>(`${this.apiUrl}/api/v1/pipeline/jobs/${jobId}/videos`).subscribe({
+          next: (videos) => {
+            this.discoveredVideos.set(videos);
+          }
+        });
+      }
       
     }, 3000);
   }
@@ -288,5 +296,18 @@ export class ScanJobNew implements OnInit, OnDestroy {
   downloadAgent() {
     // Trigger download of the local agent script
     window.open(`${this.apiUrl}/api/v1/pipeline/download-agent`, '_blank');
+  }
+
+  triggerVerify() {
+    if (!this.currentJobId()) return;
+    this.addLog("VERIFICATION TRIGGERED manually by user.");
+    this.http.post(`${this.apiUrl}/api/v1/pipeline/jobs/${this.currentJobId()}/verify`, {}).subscribe({
+      next: () => {
+        this.addLog("Cloud is now analyzing fingerprints...");
+      },
+      error: (err) => {
+        this.addLog(`Verification trigger failed: ${err.message}`);
+      }
+    });
   }
 }
