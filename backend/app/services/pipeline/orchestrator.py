@@ -269,8 +269,8 @@ def process_raw_external_item(
     audio_bytes: Optional[bytes] = None
 ):
     """
-    Step 2: Receives raw frames/audio. Fingerprints AUDIO now.
-    Saves JPGs for later visual hashing in Step 3.
+    Step 2: Receives raw frames/audio. Stores them on Cloudinary.
+    NO HASHING happens here.
     """
     import threading
     from app.db.session import SessionLocal
@@ -278,7 +278,6 @@ def process_raw_external_item(
     
     db = SessionLocal()
     try:
-        from app.services.fingerprint.generator import get_audio_fp
         from app.services.storage.cloudinary_client import upload_image
         import tempfile
         import os
@@ -291,48 +290,49 @@ def process_raw_external_item(
 
         if not scraped:
             scraped = ScrapedVideo(
-                scan_job_id=job_id,
-                platform=metadata["platform"],
+                scan_job_id=job_id, platform=metadata["platform"],
                 platform_video_id=metadata["platform_video_id"],
-                title=metadata["title"],
-                url=metadata["url"]
+                title=metadata["title"], url=metadata["url"]
             )
             db.add(scraped)
             db.commit()
             db.refresh(scraped)
 
-        # 2. IMMEDIATE Audio Hashing (Fast, no browser needed)
+        # 2. Store Raw Audio on Cloudinary
         if audio_bytes:
-            logger.info(f"   🎵 Hashing audio for: {scraped.platform_video_id}")
+            logger.info(f"   📤 Uploading raw audio for: {scraped.platform_video_id}")
             with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as tmp:
                 tmp.write(audio_bytes)
                 tmp.flush()
-                scraped.audio_fp = get_audio_fp(tmp.name)
+                tmp.close()
+                audio_url = upload_image(tmp.name, folder="sports-guardian/raw_audio")
+                scraped.audio_url = audio_url
                 os.remove(tmp.name)
 
-        # 3. Store JPGs in Cloudinary
+        # 3. Store raw JPGs on Cloudinary
         frame_urls = []
+        logger.info(f"   📤 Uploading {len(frame_bytes_list)} frames for: {scraped.platform_video_id}")
         for b in frame_bytes_list:
             with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
                 tmp.write(b)
                 tmp.flush()
+                tmp.close()
                 url = upload_image(tmp.name, folder="sports-guardian/scraped_frames")
                 frame_urls.append(url)
                 os.remove(tmp.name)
 
         scraped.frame_paths = frame_urls
-        # Clear old frames if any, then add new ones
+        # Clear old frames, add new placeholders linked to the URLs
         db.query(ScrapedFrame).filter(ScrapedFrame.scraped_video_id == scraped.id).delete()
         for i, f_url in enumerate(frame_urls):
             db.add(ScrapedFrame(
-                frame_number=i,
-                file_path=f_url,
+                frame_number=i, file_path=f_url,
                 scraped_video_id=scraped.id
             ))
         
         db.commit()
 
-        # Check overall job progress
+        # Update Job Status
         all_videos = db.query(ScrapedVideo).filter(ScrapedVideo.scan_job_id == job_id).all()
         ready_count = sum(1 for v in all_videos if v.frame_paths and len(v.frame_paths) > 0)
         
@@ -341,10 +341,7 @@ def process_raw_external_item(
             if job:
                 job.status = "READY_FOR_VERIFICATION"
                 db.commit()
-                logger.info(f"🎯 SYSTEM READY — All data gathered for Job {job_id}.")
-        else:
-            logger.info(f"⌛ Progress: {ready_count}/{len(all_videos)} targets extracted.")
-
+                logger.info(f"🎯 SYSTEM READY — All raw data stored for Job {job_id}.")
     except Exception:
         db.rollback()
         logger.error(f"❌ process_raw_external_item failed:\n{traceback.format_exc()}")
@@ -354,7 +351,8 @@ def process_raw_external_item(
 
 def verify_scan_results(job_id: int):
     """
-    Step 3: CREATE HASHES from stored images and COMPARE.
+    Step 3: CREATE HASHES (pHash, PDQ, Audio) from the raw files 
+    that were stored in Step 2, then run similarity comparison.
     """
     import threading
     from app.db.session import SessionLocal
@@ -362,10 +360,12 @@ def verify_scan_results(job_id: int):
     
     db = SessionLocal()
     try:
-        from app.services.fingerprint.generator import get_phash, get_pdq
+        from app.services.fingerprint.generator import get_phash, get_pdq, get_audio_fp
         import requests
         import numpy as np
         import cv2
+        import tempfile
+        import os
 
         job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
         if not job: return
@@ -373,16 +373,27 @@ def verify_scan_results(job_id: int):
         job.status = "VERIFYING"
         db.commit()
 
-        logger.info(f"⚙️ CLOUD HASHING & COMPARISON STARTED — Job {job_id}")
+        logger.info(f"⚙️ CLOUD HASHING & MATCHING STARTED — Job {job_id}")
         
         scraped_videos = db.query(ScrapedVideo).filter(ScrapedVideo.scan_job_id == job_id).all()
         for sv in scraped_videos:
-            logger.info(f"──── 🎬 Creating hashes for: {sv.title[:60]}")
+            logger.info(f"──── 🎬 Processing: {sv.title[:60]}")
             
+            # 1. Generate Audio Hash on Cloud
+            if sv.audio_url:
+                logger.info(f"   🎵 Fingerprinting audio on cloud...")
+                resp = requests.get(sv.audio_url)
+                if resp.status_code == 200:
+                    with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as tmp:
+                        tmp.write(resp.content)
+                        tmp.flush()
+                        tmp.close()
+                        sv.audio_fp = get_audio_fp(tmp.name)
+                        os.remove(tmp.name)
+            
+            # 2. Generate Visual Hashes (pHash + PDQ) on Cloud
             current_phashes = []
             current_pdq_hashes = []
-
-            # Generate hashes from Cloudinary URLs
             for frame_record in sv.frames:
                 resp = requests.get(frame_record.file_path)
                 if resp.status_code == 200:
@@ -396,25 +407,21 @@ def verify_scan_results(job_id: int):
                         current_phashes.append(ph)
                         current_pdq_hashes.append(pdq)
             
-            db.commit() # Save the new hashes
+            db.commit() # Save hashes
 
-            # AI Moderation
+            # 3. AI Analysis & Final Matching
             ai_decision, ai_reason = ai_moderate(sv.title, sv.description or "")
-            
-            # Final Matching
             scraped_text = f"{sv.title} {sv.description or ''}".strip()
             _match_against_assets(
                 db, sv, current_phashes, current_pdq_hashes, sv.audio_fp,
-                scraped_text=scraped_text,
-                scraped_comments=sv.comments or [],
-                ai_decision=ai_decision,
-                ai_reason=ai_reason
+                scraped_text=scraped_text, scraped_comments=sv.comments or [],
+                ai_decision=ai_decision, ai_reason=ai_reason
             )
 
         job.status = "COMPLETED"
         job.completed_at = datetime.datetime.utcnow()
         db.commit()
-        logger.info(f"✅ COMPARISON FINISHED. Results live on dashboard.")
+        logger.info(f"✅ ALL VERIFICATIONS COMPLETED.")
     except Exception:
         db.rollback()
         job.status = "FAILED"
