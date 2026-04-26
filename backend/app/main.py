@@ -48,7 +48,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # ── API v1 router ────────────────────────────────────────────────────────────
-app.include_router(api_v1_router)
+app.include_router(api_v1_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/", tags=["Health"])
