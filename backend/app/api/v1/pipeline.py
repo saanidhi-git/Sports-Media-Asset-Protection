@@ -267,6 +267,8 @@ def get_enriched_results(
     Returns fully enriched detection results for a given job.
     Each result includes the scraped video metadata and matched asset name.
     """
+    from app.services.review.queue import enrich_detection_result
+    
     job = db.query(ScanJob).filter(ScanJob.id == job_id, ScanJob.user_id == current_user.id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Scan job not found.")
@@ -279,44 +281,7 @@ def get_enriched_results(
         .all()
     )
 
-    enriched = []
-    for det in rows:
-        sv = det.scraped_video
-        asset_name = None
-        if det.matched_asset_id:
-            asset = db.query(Asset).filter(Asset.id == det.matched_asset_id).first()
-            asset_name = asset.asset_name if asset else None
-
-        # Fetch frame paths from the new ScrapedFrame table
-        frame_paths = [f.file_path for f in sv.frames]
-        if not frame_paths:
-            # Fallback to legacy JSON column if table is empty
-            frame_paths = sv.frame_paths or []
-
-        enriched.append(EnrichedDetectionResult(
-            id=det.id,
-            verdict=det.verdict,
-            phash_score=det.phash_score,
-            pdq_score=det.pdq_score,
-            audio_score=det.audio_score,
-            metadata_score=det.metadata_score,
-            final_score=det.final_score,
-            platform=sv.platform,
-            video_title=sv.title,
-            video_url=sv.url,
-            platform_video_id=sv.platform_video_id,
-            frames=frame_paths,
-            matched_asset_id=det.matched_asset_id,
-            matched_asset_name=asset_name,
-            uploader=sv.uploader,
-            comments=sv.comments or [],
-            like_count=sv.like_count,
-            view_count=sv.view_count,
-            ai_decision=det.ai_decision,
-            ai_reason=det.ai_reason,
-            created_at=det.created_at,
-        ))
-    return enriched
+    return [enrich_detection_result(db, det) for det in rows]
 
 
 from app.services.review.queue import get_human_review_queue, get_review_case, get_user_stats

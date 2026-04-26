@@ -4,11 +4,10 @@ from typing import List, Optional, Dict
 
 logger = logging.getLogger(__name__)
 
-# New Weights (sum to 1.0)
-W_PHASH = 0.30
-W_PDQ = 0.25
-W_AUDIO = 0.32
-W_META = 0.13
+# Weights from reference script (v6.0)
+W_PHASH = 0.20
+W_PDQ = 0.30
+W_AUDIO = 0.50
 
 # Thresholds
 THRESHOLD_FLAG = 0.85
@@ -18,58 +17,50 @@ def phash_similarity(suspect_hashes: List[str], ref_hashes: List[str]) -> float:
     if not suspect_hashes or not ref_hashes:
         return 0.0
         
-    scores = []
-    for s_hash in suspect_hashes:
-        if not s_hash:
-            continue
-        best_sim = 0.0
-        try:
+    try:
+        distances = []
+        for s_hash in suspect_hashes:
+            if not s_hash: continue
             s_obj = imagehash.hex_to_hash(s_hash)
             for r_hash in ref_hashes:
-                if not r_hash:
-                    continue
+                if not r_hash: continue
                 r_obj = imagehash.hex_to_hash(r_hash)
-                dist = s_obj - r_obj
-                sim = max(0.0, 1.0 - (dist / 64.0))
-                if sim > best_sim:
-                    best_sim = sim
-            scores.append(best_sim)
-        except Exception as e:
-            logger.warning(f"Error calculating pHash similarity: {e}")
-            
-    if not scores:
-        return 0.0
+                distances.append(s_obj - r_obj)
         
-    return sum(scores) / len(scores)
+        if not distances:
+            return 0.0
+            
+        min_d = min(distances)
+        # Using 64 as threshold for 0.0 score as per reference
+        score = max(0.0, 1.0 - (min_d / 64.0))
+        return float(round(score, 4))
+    except Exception as e:
+        logger.warning(f"Error calculating pHash similarity: {e}")
+        return 0.0
 
 def pdq_similarity(suspect_hashes: List[str], ref_hashes: List[str]) -> float:
     if not suspect_hashes or not ref_hashes:
         return 0.0
     
-    scores = []
-    for s_hash in suspect_hashes:
-        if not s_hash:
-            continue
-        best_sim = 0.0
-        try:
+    try:
+        min_dist = 256
+        for s_hash in suspect_hashes:
+            if not s_hash: continue
             v_s = int(s_hash, 16)
             for r_hash in ref_hashes:
-                if not r_hash:
-                    continue
+                if not r_hash: continue
                 v_r = int(r_hash, 16)
                 # Hamming distance via XOR and bit count
                 dist = bin(v_s ^ v_r).count('1')
-                sim = max(0.0, 1.0 - (dist / 64.0))
-                if sim > best_sim:
-                    best_sim = sim
-            scores.append(best_sim)
-        except Exception as e:
-            logger.warning(f"Error calculating PDQ similarity: {e}")
-            
-    if not scores:
-        return 0.0
+                if dist < min_dist:
+                    min_dist = dist
         
-    return sum(scores) / len(scores)
+        # Using 64 as threshold for 0.0 score as per reference
+        score = max(0.0, 1.0 - (min_dist / 64.0))
+        return float(round(score, 4))
+    except Exception as e:
+        logger.warning(f"Error calculating PDQ similarity: {e}")
+        return 0.0
 
 def audio_similarity(suspect_fp: Optional[str], ref_fp: Optional[str]) -> float:
     if not suspect_fp or not ref_fp:
@@ -123,22 +114,14 @@ def compute_verdict(
     ai_match: bool = False
 ) -> Dict:
     has_audio = audio_score > 0
-    has_meta = metadata_score > 0
-    
-    # Calculate weighted total dynamically based on available signals
-    active_w = W_PHASH + W_PDQ
-    weighted_sum = (W_PHASH * phash_score) + (W_PDQ * pdq_score)
-    
+    total_w = W_PHASH + W_PDQ
+
     if has_audio:
-        active_w += W_AUDIO
-        weighted_sum += (W_AUDIO * audio_score)
-    
-    if has_meta:
-        active_w += W_META
-        weighted_sum += (W_META * metadata_score)
-        
-    final_score = weighted_sum / active_w
-        
+        total_w += W_AUDIO
+        final_score = (W_PHASH / total_w) * phash_score + (W_PDQ / total_w) * pdq_score + (W_AUDIO / total_w) * audio_score
+    else:
+        final_score = (W_PHASH / total_w) * phash_score + (W_PDQ / total_w) * pdq_score
+
     if final_score >= THRESHOLD_FLAG:
         verdict = "FLAG"
     elif final_score >= THRESHOLD_REVIEW:

@@ -22,14 +22,23 @@ def enrich_detection_result(db: Session, det: DetectionResult) -> EnrichedDetect
     frame_similarities = []
     pdq_similarities = []
 
-    # Prepare suspect frames
-    for f in sv.frames:
+    # Prepare suspect frames (sorted by number)
+    sorted_suspect_frames = sorted(sv.frames, key=lambda x: x.frame_number)
+    for f in sorted_suspect_frames:
         suspect_frames_data.append(ScrapedFrameMinimal(
             frame_number=f.frame_number,
             file_path=f.file_path,
             phash_value=f.phash_value,
             pdq_hash=f.pdq_hash
         ))
+    
+    # Fallback if frames relationship is empty but frame_paths exists
+    if not suspect_frames_data and sv.frame_paths:
+        for i, path in enumerate(sv.frame_paths):
+            suspect_frames_data.append(ScrapedFrameMinimal(
+                frame_number=i,
+                file_path=path
+            ))
 
     if det.matched_asset_id:
         asset = db.query(Asset).filter(Asset.id == det.matched_asset_id).first()
@@ -37,18 +46,19 @@ def enrich_detection_result(db: Session, det: DetectionResult) -> EnrichedDetect
             asset_name = asset.asset_name
             asset_owner = asset.owner_company
             
-            # Prepare all reference frames for the UI
-            for f in asset.frames:
+            # Prepare all reference frames for the UI (sorted)
+            sorted_ref_frames = sorted(asset.frames, key=lambda x: x.frame_number)
+            for f in sorted_ref_frames:
                 ref_frames_data.append(AssetFrameMinimal(
                     frame_number=f.frame_number,
                     file_path=f.file_path,
                     phash_value=f.phash_value,
                     pdq_hash=f.pdq_hash
                 ))
-
+            
             # Compute per-frame similarities for graphing
             best_overall_dist = 64
-            for s_f in sv.frames:
+            for s_f in sorted_suspect_frames:
                 max_phash_sim = 0.0
                 max_pdq_sim = 0.0
                 
@@ -76,7 +86,7 @@ def enrich_detection_result(db: Session, det: DetectionResult) -> EnrichedDetect
                             if r_f.pdq_hash:
                                 r_v = int(r_f.pdq_hash, 16)
                                 dist = bin(s_v ^ r_v).count('1')
-                                sim = max(0.0, 1.0 - (dist / 64.0)) # 64 is the common PDQ threshold
+                                sim = max(0.0, 1.0 - (dist / 64.0)) # Use 64.0 as per reference script
                                 if sim > max_pdq_sim:
                                     max_pdq_sim = sim
                     except: pass
@@ -87,6 +97,15 @@ def enrich_detection_result(db: Session, det: DetectionResult) -> EnrichedDetect
             # Fallback for best_ref_frame_path
             if not best_ref_frame_path and asset.frames:
                 best_ref_frame_path = asset.frames[0].file_path
+
+    # Extract frame URLs for the summary list
+    all_frame_urls = [f.file_path for f in sorted_suspect_frames]
+    if not all_frame_urls and sv.frame_paths:
+        all_frame_urls = sv.frame_paths
+        
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Enriching Result {det.id}: Found {len(all_frame_urls)} frame URLs for video {sv.id}")
 
     return EnrichedDetectionResult(
         id=det.id,
@@ -100,7 +119,7 @@ def enrich_detection_result(db: Session, det: DetectionResult) -> EnrichedDetect
         video_title=sv.title,
         video_url=sv.url,
         platform_video_id=sv.platform_video_id,
-        frames=[f.file_path for f in sv.frames] or sv.frame_paths or [],
+        frames=all_frame_urls,
         suspect_frames=suspect_frames_data,
         matched_asset_id=det.matched_asset_id,
         matched_asset_name=asset_name,

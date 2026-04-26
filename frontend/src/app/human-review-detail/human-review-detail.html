@@ -34,22 +34,22 @@
           <h3 class="card-title">SIGNAL CONFIDENCE</h3>
           <div class="metrics-row">
             <div class="metric">
-              <span class="m-label">pHash</span>
+              <span class="m-label">pHash (20%)</span>
               <span class="m-val">{{ ((r.phash_score || 0) * 100).toFixed(1) }}%</span>
               <div class="m-bar"><div class="m-fill phash" [style.width.%]="(r.phash_score || 0) * 100"></div></div>
             </div>
             <div class="metric">
-              <span class="m-label">PDQ</span>
+              <span class="m-label">PDQ (30%)</span>
               <span class="m-val">{{ ((r.pdq_score || 0) * 100).toFixed(1) }}%</span>
               <div class="m-bar"><div class="m-fill pdq" [style.width.%]="(r.pdq_score || 0) * 100"></div></div>
             </div>
             <div class="metric">
-              <span class="m-label">AUDIO</span>
+              <span class="m-label">AUDIO (50%)</span>
               <span class="m-val">{{ ((r.audio_score || 0) * 100).toFixed(1) }}%</span>
               <div class="m-bar"><div class="m-fill audio" [style.width.%]="(r.audio_score || 0) * 100"></div></div>
             </div>
             <div class="metric final">
-              <span class="m-label">TOTAL</span>
+              <span class="m-label">TOTAL MATCH</span>
               <span class="m-val">{{ ((r.final_score || 0) * 100).toFixed(1) }}%</span>
               <div class="m-bar"><div class="m-fill final-bar" [style.width.%]="(r.final_score || 0) * 100"></div></div>
             </div>

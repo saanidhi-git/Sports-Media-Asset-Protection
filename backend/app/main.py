@@ -38,11 +38,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://sports-media-asset-protection-frontend.onrender.com",
-        "https://sports-media-asset-protection-frontend.onrender.com/",
         "http://localhost:4200",
         "http://localhost:8080",
     ],
-    allow_credentials=True, # Can be True now that we have explicit origins
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

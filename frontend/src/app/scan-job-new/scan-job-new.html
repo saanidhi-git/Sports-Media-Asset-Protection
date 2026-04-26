@@ -287,27 +287,22 @@
         <!-- SCORE BARS -->
         <div class="score-section">
           <div class="score-row">
-            <span class="score-label">pHash (w=0.30)</span>
+            <span class="score-label">pHash (w=0.20)</span>
             <div class="score-bar-track"><div class="score-bar-fill phash" [style.width.%]="r.phash_score * 100"></div></div>
             <span class="score-val">{{ r.phash_score.toFixed(3) }}</span>
           </div>
           <div class="score-row">
-            <span class="score-label">PDQ (w=0.25)</span>
+            <span class="score-label">PDQ (w=0.30)</span>
             <div class="score-bar-track"><div class="score-bar-fill pdq" [style.width.%]="r.pdq_score * 100"></div></div>
             <span class="score-val">{{ r.pdq_score.toFixed(3) }}</span>
           </div>
           <div class="score-row">
-            <span class="score-label">Audio (w=0.32)</span>
+            <span class="score-label">Audio (w=0.50)</span>
             <div class="score-bar-track"><div class="score-bar-fill audio" [style.width.%]="r.audio_score * 100"></div></div>
             <span class="score-val">{{ r.audio_score.toFixed(3) }}</span>
           </div>
-          <div class="score-row">
-            <span class="score-label">Metadata (w=0.13)</span>
-            <div class="score-bar-track"><div class="score-bar-fill meta" [style.width.%]="r.metadata_score * 100"></div></div>
-            <span class="score-val">{{ r.metadata_score.toFixed(3) }}</span>
-          </div>
           <div class="score-row final">
-            <span class="score-label">FINAL SCORE</span>
+            <span class="score-label">FINAL MATCH SCORE</span>
             <div class="score-bar-track"><div class="score-bar-fill final-bar" [style.width.%]="r.final_score * 100"></div></div>
             <span class="score-val">{{ r.final_score.toFixed(3) }}</span>
           </div>
