@@ -451,8 +451,7 @@ def run_pipeline_job(
                         scan_job_id=job.id, platform="youtube", platform_video_id=vid,
                         title=item["snippet"]["title"], description=item["snippet"]["description"],
                         url=f"https://www.youtube.com/watch?v={vid}",
-                        uploader=item["snippet"]["channelTitle"],
-                        status="DISCOVERED" # Custom field or we use this info in UI
+                        uploader=item["snippet"]["channelTitle"]
                     ))
                     discovered_count += 1
             except Exception as e: logger.error(f"YT Search failed: {e}")
@@ -469,7 +468,7 @@ def run_pipeline_job(
                         db.add(ScrapedVideo(
                             scan_job_id=job.id, platform="instagram", platform_video_id=vid,
                             title=r.get("title", f"Instagram Reel {vid}"), 
-                            description=r.get("content", ""), url=url, status="DISCOVERED"
+                            description=r.get("content", ""), url=url
                         ))
                         discovered_count += 1
             except Exception as e: logger.error(f"IG Search failed: {e}")
