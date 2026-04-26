@@ -36,8 +36,12 @@ app = FastAPI(
 # ── CORS ────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all for hybrid agent flexibility
-    allow_credentials=False, # Must be False if allow_origins is ["*"]
+    allow_origins=[
+        "https://sports-media-asset-protection-frontend.onrender.com",
+        "http://localhost:4200",
+        "http://localhost:8080",
+    ],
+    allow_credentials=True, # Can be True now that we have explicit origins
     allow_methods=["*"],
     allow_headers=["*"],
 )
