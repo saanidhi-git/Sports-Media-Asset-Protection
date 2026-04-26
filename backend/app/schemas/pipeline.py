@@ -36,6 +36,7 @@ class ScanJobOut(BaseModel):
     search_query: str
     platforms: list[str]
     status: str
+    external_data_received: bool = False
     created_at: datetime
     completed_at: Optional[datetime] = None
 

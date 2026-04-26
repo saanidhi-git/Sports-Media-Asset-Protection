@@ -20,7 +20,7 @@ class JobLogHandler(logging.Handler):
                 with self._lock:
                     if job_id not in self._file_handles:
                         log_path = os.path.join(JOB_LOGS_DIR, f"job_{job_id}.log")
-                        self._file_handles[job_id] = open(log_path, "a", encoding="utf-8")
+                        self._file_handles[job_id] = open(log_path, "a", encoding="utf-8", errors="backslashreplace")
                     
                     f = self._file_handles[job_id]
                     f.write(msg + "\n")

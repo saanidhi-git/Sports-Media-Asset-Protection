@@ -149,10 +149,11 @@
             <small class="text-yellow">Run this on your laptop</small>
           </div>
 
-          <div class="step-card" [class.active]="currentJob()?.status === 'READY_FOR_VERIFICATION'">
+          <div class="step-card" [class.active]="currentJob()?.external_data_received">
             <div class="step-header">STEP 3: ANALYZE</div>
-            <button class="btn btn-primary btn-sm" 
-                    [disabled]="currentJob()?.status !== 'READY_FOR_VERIFICATION'"
+            <button class="btn btn-sm" 
+                    [ngClass]="verifyButtonClass"
+                    [disabled]="!isVerifyEnabled"
                     (click)="triggerVerify()">
               COMPUTE HASHES & VERIFY
             </button>

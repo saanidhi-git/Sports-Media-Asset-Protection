@@ -63,6 +63,10 @@ def push_external_raw(
     audio_bytes = audio.file.read() if audio else None
 
     # Extraction & fingerprinting can now be sent directly from agent
+    job.external_data_received = True
+    db.add(job)
+    db.commit()
+
     background_tasks.add_task(
         process_raw_external_item,
         job.id,

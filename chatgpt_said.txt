@@ -1,50 +1,23 @@
-2026-04-26T04:22:18.503982119Z ==> Docs on specifying a Node.js version: https://render.com/docs/node-version
-2026-04-26T04:22:38.607045264Z 
-2026-04-26T04:22:38.607091584Z added 476 packages, and audited 477 packages in 17s
-2026-04-26T04:22:38.607102984Z 
-2026-04-26T04:22:38.607355397Z 111 packages are looking for funding
-2026-04-26T04:22:38.607543729Z   run `npm fund` for details
-2026-04-26T04:22:38.609612032Z 
-2026-04-26T04:22:38.609628022Z found 0 vulnerabilities
-2026-04-26T04:22:40.447012095Z 
-2026-04-26T04:22:40.447052116Z up to date, audited 477 packages in 2s
-2026-04-26T04:22:40.447064706Z 
-2026-04-26T04:22:40.447264478Z 111 packages are looking for funding
-2026-04-26T04:22:40.4474315Z   run `npm fund` for details
-2026-04-26T04:22:40.449461502Z 
-2026-04-26T04:22:40.449474323Z found 0 vulnerabilities
-2026-04-26T04:22:40.590172091Z ==> Running build command 'npm install && npm run build'...
-2026-04-26T04:22:42.209461069Z 
-2026-04-26T04:22:42.209499699Z up to date, audited 477 packages in 1s
-2026-04-26T04:22:42.209513769Z 
-2026-04-26T04:22:42.209724222Z 111 packages are looking for funding
-2026-04-26T04:22:42.209886033Z   run `npm fund` for details
-2026-04-26T04:22:42.211824265Z 
-2026-04-26T04:22:42.211840765Z found 0 vulnerabilities
-2026-04-26T04:22:42.463171889Z 
-2026-04-26T04:22:42.463204319Z > frontend@0.0.0 build
-2026-04-26T04:22:42.46321Z > ng build
-2026-04-26T04:22:42.46321527Z 
-2026-04-26T04:22:43.459503036Z ❯ Building...
-2026-04-26T04:22:58.608473391Z ✔ Building...
-2026-04-26T04:22:58.610305172Z Initial chunk files | Names         |  Raw size | Estimated transfer size
-2026-04-26T04:22:58.610322432Z main-BLCIQRSK.js    | main          | 691.95 kB |               173.04 kB
-2026-04-26T04:22:58.610328392Z styles-M5ZXTXWJ.css | styles        |   9.08 kB |                 1.75 kB
-2026-04-26T04:22:58.610333322Z 
-2026-04-26T04:22:58.610338942Z                     | Initial total | 701.03 kB |               174.79 kB
-2026-04-26T04:22:58.610344692Z 
-2026-04-26T04:22:58.610351652Z Application bundle generation complete. [15.148 seconds] - 2026-04-26T04:22:58.607Z
-2026-04-26T04:22:58.610357522Z 
-2026-04-26T04:22:58.612806979Z ▲ [WARNING] bundle initial exceeded maximum budget. Budget 500.00 kB was not met by 201.03 kB with a total of 701.03 kB.
-2026-04-26T04:22:58.61282421Z 
-2026-04-26T04:22:58.61282938Z 
-2026-04-26T04:22:58.61283573Z ▲ [WARNING] src/app/scan-job-new/scan-job-new.css exceeded maximum budget. Budget 8.00 kB was not met by 636 bytes with a total of 8.64 kB.
-2026-04-26T04:22:58.61286385Z 
-2026-04-26T04:22:58.61286678Z 
-2026-04-26T04:22:58.61287179Z ▲ [WARNING] src/app/human-review-detail/human-review-detail.css exceeded maximum budget. Budget 8.00 kB was not met by 1.23 kB with a total of 9.23 kB.
-2026-04-26T04:22:58.61287463Z 
-2026-04-26T04:22:58.61287735Z 
-2026-04-26T04:22:58.614374867Z Output location: /opt/render/project/src/frontend/dist/frontend
-2026-04-26T04:22:58.614395217Z 
-2026-04-26T04:23:00.189044163Z ==> Uploading build...
-2026-04-26T04:23:00.355094553Z ==> Your site is live 🎉
+C:\Users\Shree\OneDrive\Desktop\search agent>uv run agent_job_27.py
+
+==================================================
+🚀 HYBRID STREAMING EXTRACTION — Job #27
+==================================================
+
+[1/5] Streaming: INTER MIAMI de MESSI GANÓ 2-0 vs REAL SALT LAKE co...
+[INFO] 🌐 Fetching stream for: https://www.youtube.com/watch?v=XjXIKljkYqk
+[INFO] 🎵 Extracting audio segment (30s)...
+[INFO] 🎞️  Capturing frames directly from stream...
+[INFO] 📤 Pushing raw frames to cloud...
+   ✅ SUCCESS: Data pushed.
+Traceback (most recent call last):
+  File "C:\Users\Shree\OneDrive\Desktop\search agent\agent_job_27.py", line 186, in <module>
+    if jid > 0: process_job(jid)
+                ^^^^^^^^^^^^^^^^
+  File "C:\Users\Shree\OneDrive\Desktop\search agent\agent_job_27.py", line 139, in process_job
+    print(f"[{i+1}/{len(TARGET_VIDEOS)}] Streaming: {v['title'][:50]}...")
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 17-18: surrogates not allowed
+
+C:\Users\Shree\OneDrive\Desktop\search agent>^A
+
+

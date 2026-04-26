@@ -12,6 +12,7 @@ interface ScanJob {
   search_query: string;
   platforms: string[];
   status: string;
+  external_data_received: boolean;
   created_at: string;
   completed_at: string | null;
 }
@@ -132,6 +133,22 @@ export class ScanJobNew implements OnInit, OnDestroy {
     return this.scanForm.get('youtube_enabled')?.value
       || this.scanForm.get('instagram_enabled')?.value
       || this.scanForm.get('reddit_enabled')?.value;
+  }
+
+  get verifyButtonClass(): string {
+    const job = this.currentJob();
+    if (job?.external_data_received) {
+      return 'btn-blue-neon';
+    }
+    if (job?.status === 'READY_FOR_VERIFICATION') {
+      return 'btn-primary';
+    }
+    return 'btn-disabled';
+  }
+
+  get isVerifyEnabled(): boolean {
+    const job = this.currentJob();
+    return !!(job?.external_data_received || job?.status === 'READY_FOR_VERIFICATION');
   }
 
   // ── SUBMIT ────────────────────────────────

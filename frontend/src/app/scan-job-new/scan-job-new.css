@@ -222,6 +222,30 @@
   color: var(--dark-text-main);
 }
 
+.btn-blue-neon {
+  background: rgba(0, 102, 255, 0.2);
+  color: #66b2ff;
+  border: 1px solid #0066ff;
+  box-shadow: 0 0 15px rgba(0, 102, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-blue-neon:hover {
+  background: rgba(0, 102, 255, 0.3);
+  box-shadow: 0 0 25px rgba(0, 102, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-disabled {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
 .btn-lg {
   padding: 14px 32px;
   font-size: 13px;

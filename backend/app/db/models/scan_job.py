@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.base_class import Base
@@ -17,6 +17,7 @@ class ScanJob(Base):
     platforms = Column(JSON, nullable=False) # e.g., ["youtube", "reddit"]
     
     status = Column(String, default="PENDING") # PENDING, PROCESSING, COMPLETED, FAILED
+    external_data_received = Column(Boolean, default=False) # Boolean to track if external data is received
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
