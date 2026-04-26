@@ -269,8 +269,8 @@ def process_raw_external_item(
     audio_bytes: Optional[bytes] = None
 ):
     """
-    Step 2: Receives raw frames and stores them. 
-    NO HASHING happens here yet.
+    Step 2: Receives raw frames/audio. Fingerprints AUDIO now.
+    Saves JPGs for later visual hashing in Step 3.
     """
     import threading
     from app.db.session import SessionLocal
@@ -278,11 +278,12 @@ def process_raw_external_item(
     
     db = SessionLocal()
     try:
+        from app.services.fingerprint.generator import get_audio_fp
         from app.services.storage.cloudinary_client import upload_image
         import tempfile
         import os
 
-        # 1. Find existing record
+        # 1. Find the target record from Discovery
         scraped = db.query(ScrapedVideo).filter(
             ScrapedVideo.scan_job_id == job_id,
             ScrapedVideo.platform_video_id == metadata["platform_video_id"]
@@ -300,17 +301,16 @@ def process_raw_external_item(
             db.commit()
             db.refresh(scraped)
 
-        # 2. Save raw audio if provided
+        # 2. IMMEDIATE Audio Hashing (Fast, no browser needed)
         if audio_bytes:
+            logger.info(f"   🎵 Hashing audio for: {scraped.platform_video_id}")
             with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as tmp:
                 tmp.write(audio_bytes)
                 tmp.flush()
-                # We save the file path for now; we'll fingerprint later
-                scraped.local_folder_path = tmp.name # Reuse field to store local path temporarily or similar
-                # For this demo, we'll just keep the bytes in a temp file or skip audio hashing until Phase 3
+                scraped.audio_fp = get_audio_fp(tmp.name)
                 os.remove(tmp.name)
 
-        # 3. Upload frames to Cloudinary (Storage only)
+        # 3. Store JPGs in Cloudinary
         frame_urls = []
         for b in frame_bytes_list:
             with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
@@ -321,6 +321,8 @@ def process_raw_external_item(
                 os.remove(tmp.name)
 
         scraped.frame_paths = frame_urls
+        # Clear old frames if any, then add new ones
+        db.query(ScrapedFrame).filter(ScrapedFrame.scraped_video_id == scraped.id).delete()
         for i, f_url in enumerate(frame_urls):
             db.add(ScrapedFrame(
                 frame_number=i,
@@ -330,7 +332,7 @@ def process_raw_external_item(
         
         db.commit()
 
-        # Update Job Status
+        # Check overall job progress
         all_videos = db.query(ScrapedVideo).filter(ScrapedVideo.scan_job_id == job_id).all()
         ready_count = sum(1 for v in all_videos if v.frame_paths and len(v.frame_paths) > 0)
         
@@ -339,7 +341,9 @@ def process_raw_external_item(
             if job:
                 job.status = "READY_FOR_VERIFICATION"
                 db.commit()
-                logger.info(f"✅ ALL JPGs STORED — Job {job_id} is ready for 'Compare Hashes' step.")
+                logger.info(f"🎯 SYSTEM READY — All data gathered for Job {job_id}.")
+        else:
+            logger.info(f"⌛ Progress: {ready_count}/{len(all_videos)} targets extracted.")
 
     except Exception:
         db.rollback()

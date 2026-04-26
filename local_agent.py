@@ -30,14 +30,13 @@ def ensure_dependencies():
         missing.append("opencv-python")
 
     if missing:
-        print(f"📦 Missing dependencies: {', '.join(missing)}. Attempting auto-install...")
+        print(f"📦 Setup: Missing {', '.join(missing)}. Installing now...")
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install"] + missing)
-            print("✅ Dependencies installed successfully.")
+            print("✅ Setup complete.")
             return True
         except Exception as e:
-            print(f"❌ Auto-install failed: {e}")
-            print("Please run: pip install yt-dlp opencv-python requests")
+            print(f"❌ Setup failed: {e}")
             return False
     return True
 
@@ -51,35 +50,19 @@ JOB_ID = 0
 TARGET_VIDEOS = []
 # ───────────────────────────────────────────────────────────────────────────
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger("LocalAgent")
-
-def fetch_videos_from_api(job_id):
-    import requests
-    """Fallback: Asks Render for the list of URLs if not bundled."""
-    url = f"{API_BASE_URL}/pipeline/jobs/{job_id}/videos"
-    try:
-        resp = requests.get(url)
-        if resp.status_code == 200:
-            return resp.json()
-        else:
-            logger.error(f"Failed to fetch videos ({resp.status_code}): {resp.text}")
-            return []
-    except Exception as e:
-        logger.error(f"Network error fetching videos: {e}")
-        return []
 
 def download_and_extract(video_info, tmp_dir):
     import cv2
-    """Downloads first 60s and extracts 8 frames + audio for a specific video."""
     url = video_info["url"]
     vid = video_info["platform_video_id"]
     
     video_path = os.path.join(tmp_dir, f"video_{vid}.mp4")
     audio_path = os.path.join(tmp_dir, f"audio_{vid}.m4a")
     
-    # 1. Download segment
-    logger.info(f"📥 Downloading segment from {url}...")
+    # 1. Download
+    logger.info(f"📥 Downloading: {url}")
     subprocess.run([
         "yt-dlp", "--no-warnings", "--quiet",
         "-f", "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480]/best",
@@ -87,8 +70,7 @@ def download_and_extract(video_info, tmp_dir):
         "-o", video_path, url
     ])
     
-    # 2. Extract Audio
-    logger.info("🎵 Extracting audio...")
+    # 2. Audio
     subprocess.run([
         "yt-dlp", "--no-warnings", "--quiet",
         "-f", "bestaudio", "--extract-audio", "--audio-format", "m4a",
@@ -96,8 +78,7 @@ def download_and_extract(video_info, tmp_dir):
         "-o", audio_path, url
     ])
 
-    # 3. Extract Frames
-    logger.info("🎞 Extracting frames...")
+    # 3. Frames
     cap = cv2.VideoCapture(video_path)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     frames_to_send = []
@@ -119,46 +100,41 @@ def process_job(job_id):
         sys.exit(1)
 
     import requests
-    
-    # Use bundled videos or fetch from API
     videos = TARGET_VIDEOS
     if not videos:
-        logger.info("Fetching targets from Cloud API...")
-        videos = fetch_videos_from_api(job_id)
-    
-    if not videos:
-        logger.warning(f"No videos found for Job #{job_id}. Did Discovery finish?")
+        logger.error(f"No URLs bundled. Please download the script from the dashboard for Job #{job_id}.")
         return
 
-    logger.info(f"🚀 Processing {len(videos)} videos for Job #{job_id}.")
+    print("\n" + "="*50)
+    print(f"🚀 HYBRID EXTRACTION STARTED — Job #{job_id}")
+    print(f"📦 Total targets to process: {len(videos)}")
+    print("="*50 + "\n")
 
-    for v in videos:
-        logger.info(f"🎬 Processing: {v['title']}")
+    for i, v in enumerate(videos):
+        print(f"[{i+1}/{len(videos)}] Processing: {v['title'][:50]}...")
         with tempfile.TemporaryDirectory() as tmp:
-            frames, audio = download_and_extract(v, tmp)
-            
-            # Push to Render
-            logger.info(f"📤 Pushing raw data for '{v['title']}' to Cloud...")
-            files = [("frames", (os.path.basename(f), open(f, "rb"), "image/jpeg")) for f in frames]
-            if os.path.exists(audio):
-                files.append(("audio", (os.path.basename(audio), open(audio, "rb"), "audio/mp4")))
-
-            data = {
-                "job_id": job_id,
-                "api_key": EXTERNAL_AGENT_KEY,
-                "metadata_json": json.dumps(v)
-            }
-
             try:
-                resp = requests.post(f"{API_BASE_URL}/pipeline/external-push-raw", data=data, files=files)
-                if resp.status_code == 202:
-                    logger.info(f"✅ SUCCESS: Pushed data for {v['platform_video_id']}")
-                else:
-                    logger.error(f"❌ FAILED ({resp.status_code}): {resp.text}")
-            except Exception as e:
-                logger.error(f"Network error pushing data: {e}")
+                frames, audio = download_and_extract(v, tmp)
+                
+                # Push
+                files = [("frames", (os.path.basename(f), open(f, "rb"), "image/jpeg")) for f in frames]
+                if os.path.exists(audio):
+                    files.append(("audio", (os.path.basename(audio), open(audio, "rb"), "audio/mp4")))
 
-    logger.info("🏁 Local extraction complete. Please return to the website and click 'COMPUTE HASHES & VERIFY'!")
+                data = {"job_id": job_id, "api_key": EXTERNAL_AGENT_KEY, "metadata_json": json.dumps(v)}
+                resp = requests.post(f"{API_BASE_URL}/pipeline/external-push-raw", data=data, files=files)
+                
+                if resp.status_code == 202:
+                    print(f"   ✅ Data pushed successfully.")
+                else:
+                    print(f"   ❌ Push failed: {resp.text}")
+            except Exception as e:
+                print(f"   ❌ Error: {e}")
+
+    print("\n" + "="*50)
+    print("🏁 ALL TARGETS PROCESSED!")
+    print("👉 ACTION: Go back to the dashboard and click 'COMPUTE HASHES & VERIFY'")
+    print("="*50 + "\n")
 
 if __name__ == "__main__":
     jid = JOB_ID
