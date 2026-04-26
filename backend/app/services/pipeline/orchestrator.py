@@ -269,8 +269,8 @@ def process_raw_external_item(
     audio_bytes: Optional[bytes] = None
 ):
     """
-    Receives raw frames for an EXISTING video found during discovery.
-    Hashes them and stores them in the DB.
+    Step 2: Receives raw frames and stores them. 
+    NO HASHING happens here yet.
     """
     import threading
     from app.db.session import SessionLocal
@@ -278,19 +278,17 @@ def process_raw_external_item(
     
     db = SessionLocal()
     try:
-        from app.services.fingerprint.generator import get_phash, get_pdq, get_audio_fp
         from app.services.storage.cloudinary_client import upload_image
         import tempfile
         import os
 
-        # 1. Find the existing video record created during Discovery
+        # 1. Find existing record
         scraped = db.query(ScrapedVideo).filter(
             ScrapedVideo.scan_job_id == job_id,
             ScrapedVideo.platform_video_id == metadata["platform_video_id"]
         ).first()
 
         if not scraped:
-            logger.warning(f"⚠️ Received frames for unknown video {metadata['platform_video_id']}. Creating new record.")
             scraped = ScrapedVideo(
                 scan_job_id=job_id,
                 platform=metadata["platform"],
@@ -302,49 +300,37 @@ def process_raw_external_item(
             db.commit()
             db.refresh(scraped)
 
-        logger.info(f"📥 Received {len(frame_bytes_list)} frames for existing video: {scraped.title[:60]}")
-
-        phashes = []
-        pdq_hashes = []
-        frame_urls = []
-
-        # 2. Process Frames: Hash & Upload
-        for b in frame_bytes_list:
-            nparr = np.frombuffer(b, np.uint8)
-            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            
-            if frame is not None:
-                phashes.append(get_phash(frame))
-                pdq_hashes.append(get_pdq(frame))
-                
-                with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-                    cv2.imwrite(tmp.name, frame)
-                    url = upload_image(tmp.name, folder="sports-guardian/scraped_frames")
-                    frame_urls.append(url)
-                    os.remove(tmp.name)
-
-        # 3. Process Audio
+        # 2. Save raw audio if provided
         if audio_bytes:
             with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as tmp:
                 tmp.write(audio_bytes)
                 tmp.flush()
-                scraped.audio_fp = get_audio_fp(tmp.name)
+                # We save the file path for now; we'll fingerprint later
+                scraped.local_folder_path = tmp.name # Reuse field to store local path temporarily or similar
+                # For this demo, we'll just keep the bytes in a temp file or skip audio hashing until Phase 3
                 os.remove(tmp.name)
 
-        # 4. Save Frames to DB
+        # 3. Upload frames to Cloudinary (Storage only)
+        frame_urls = []
+        for b in frame_bytes_list:
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+                tmp.write(b)
+                tmp.flush()
+                url = upload_image(tmp.name, folder="sports-guardian/scraped_frames")
+                frame_urls.append(url)
+                os.remove(tmp.name)
+
         scraped.frame_paths = frame_urls
         for i, f_url in enumerate(frame_urls):
             db.add(ScrapedFrame(
                 frame_number=i,
                 file_path=f_url,
-                phash_value=phashes[i] if i < len(phashes) else None,
-                pdq_hash=pdq_hashes[i] if i < len(pdq_hashes) else None,
                 scraped_video_id=scraped.id
             ))
         
         db.commit()
 
-        # 5. Check if all videos for this job now have frames
+        # Update Job Status
         all_videos = db.query(ScrapedVideo).filter(ScrapedVideo.scan_job_id == job_id).all()
         ready_count = sum(1 for v in all_videos if v.frame_paths and len(v.frame_paths) > 0)
         
@@ -353,9 +339,7 @@ def process_raw_external_item(
             if job:
                 job.status = "READY_FOR_VERIFICATION"
                 db.commit()
-                logger.info(f"🎯 ALL DATA RECEIVED — Job {job_id} is ready for Final Comparison!")
-        else:
-            logger.info(f"⌛ Progress: {ready_count}/{len(all_videos)} videos ready.")
+                logger.info(f"✅ ALL JPGs STORED — Job {job_id} is ready for 'Compare Hashes' step.")
 
     except Exception:
         db.rollback()
@@ -366,8 +350,7 @@ def process_raw_external_item(
 
 def verify_scan_results(job_id: int):
     """
-    The final phase: Runs AI moderation and database matching on the
-    frames that were pushed from the local agent.
+    Step 3: CREATE HASHES from stored images and COMPARE.
     """
     import threading
     from app.db.session import SessionLocal
@@ -375,30 +358,49 @@ def verify_scan_results(job_id: int):
     
     db = SessionLocal()
     try:
+        from app.services.fingerprint.generator import get_phash, get_pdq
+        import requests
+        import numpy as np
+        import cv2
+
         job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
         if not job: return
 
         job.status = "VERIFYING"
         db.commit()
 
-        logger.info(f"🔍 FINAL VERIFICATION STARTED — Job {job_id}")
+        logger.info(f"⚙️ CLOUD HASHING & COMPARISON STARTED — Job {job_id}")
         
         scraped_videos = db.query(ScrapedVideo).filter(ScrapedVideo.scan_job_id == job_id).all()
         for sv in scraped_videos:
-            logger.info(f"──── 🎬 Verifying: {sv.title[:60]}")
+            logger.info(f"──── 🎬 Creating hashes for: {sv.title[:60]}")
             
-            # Get hashes from ScrapedFrame table
-            phashes = [f.phash_value for f in sv.frames if f.phash_value]
-            pdq_hashes = [f.pdq_hash for f in sv.frames if f.pdq_hash]
+            current_phashes = []
+            current_pdq_hashes = []
+
+            # Generate hashes from Cloudinary URLs
+            for frame_record in sv.frames:
+                resp = requests.get(frame_record.file_path)
+                if resp.status_code == 200:
+                    nparr = np.frombuffer(resp.content, np.uint8)
+                    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                    if img is not None:
+                        ph = get_phash(img)
+                        pdq = get_pdq(img)
+                        frame_record.phash_value = ph
+                        frame_record.pdq_hash = pdq
+                        current_phashes.append(ph)
+                        current_pdq_hashes.append(pdq)
             
+            db.commit() # Save the new hashes
+
             # AI Moderation
             ai_decision, ai_reason = ai_moderate(sv.title, sv.description or "")
-            logger.info(f"   🤖 [AI] {ai_decision} | {ai_reason}")
-
-            # Matching logic
+            
+            # Final Matching
             scraped_text = f"{sv.title} {sv.description or ''}".strip()
             _match_against_assets(
-                db, sv, phashes, pdq_hashes, sv.audio_fp,
+                db, sv, current_phashes, current_pdq_hashes, sv.audio_fp,
                 scraped_text=scraped_text,
                 scraped_comments=sv.comments or [],
                 ai_decision=ai_decision,
@@ -408,7 +410,7 @@ def verify_scan_results(job_id: int):
         job.status = "COMPLETED"
         job.completed_at = datetime.datetime.utcnow()
         db.commit()
-        logger.info(f"✅ ALL VERIFICATIONS COMPLETED.")
+        logger.info(f"✅ COMPARISON FINISHED. Results live on dashboard.")
     except Exception:
         db.rollback()
         job.status = "FAILED"

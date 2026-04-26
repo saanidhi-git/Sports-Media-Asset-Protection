@@ -8,6 +8,21 @@ import json
 import cv2
 import logging
 
+# ── AUTO-INSTALL YT-DLP ──────────────────────────────────────────────────
+def ensure_dependencies():
+    try:
+        import yt_dlp
+        return True
+    except ImportError:
+        print("📦 yt-dlp missing. Attempting auto-install...")
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "yt-dlp"])
+            print("✅ yt-dlp installed successfully.")
+            return True
+        except Exception as e:
+            print(f"❌ Auto-install failed: {e}")
+            return False
+
 # ── CONFIGURATION ──────────────────────────────────────────────────────────
 # IMPORTANT: Update this to your live Render backend URL!
 API_BASE_URL = "https://your-app-on-render.com/api/v1" 
@@ -76,6 +91,10 @@ def download_and_extract(video_info, tmp_dir):
     return frames_to_send, audio_path
 
 def process_job(job_id):
+    if not ensure_dependencies():
+        logger.error("Could not verify/install yt-dlp. Please install it manually.")
+        return
+
     videos = fetch_videos_to_process(job_id)
     if not videos:
         logger.warning(f"No videos found for Job #{job_id}. Did Discovery finish?")
@@ -109,7 +128,7 @@ def process_job(job_id):
             except Exception as e:
                 logger.error(f"Network error pushing data: {e}")
 
-    logger.info("🏁 Local extraction complete. Please return to the website and click 'VERIFY'!")
+    logger.info("🏁 Local extraction complete. Please return to the website and click 'COMPUTE HASHES & VERIFY'!")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
