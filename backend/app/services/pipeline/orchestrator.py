@@ -485,6 +485,26 @@ def run_pipeline_job(
                         discovered_count += 1
             except Exception as e: logger.error(f"IG Search failed: {e}")
 
+        # Reddit Search
+        if "reddit" in platform_limits:
+            logger.info(f"🟠 Searching Reddit...")
+            try:
+                from app.services.scraper import reddit as rd_scraper
+                # Reddit search logic (from reddit.py)
+                data = rd_scraper._search_page(job.search_query, None)
+                children = data.get("data", {}).get("children", [])
+                for child in children[:platform_limits["reddit"]]:
+                    p = child["data"]
+                    if rd_scraper._is_video_post(p):
+                        db.add(ScrapedVideo(
+                            scan_job_id=job.id, platform="reddit", platform_video_id=p.get("id"),
+                            title=p.get("title", "Reddit Video"), description=p.get("selftext", ""),
+                            url=f"https://reddit.com{p.get('permalink', '')}",
+                            uploader=p.get("author")
+                        ))
+                        discovered_count += 1
+            except Exception as e: logger.error(f"Reddit Search failed: {e}")
+
         job.status = "WAITING_FOR_LOCAL_AGENT"
         db.commit()
         logger.info(f"✅ DISCOVERY FINISHED: Found {discovered_count} targets. Waiting for Local Agent.")

@@ -57,20 +57,28 @@ def download_and_extract(video_info, tmp_dir):
     import cv2
     url = video_info["url"]
     vid = video_info["platform_video_id"]
+    platform = video_info.get("platform", "youtube")
     
     video_path = os.path.join(tmp_dir, f"video_{vid}.mp4")
     audio_path = os.path.join(tmp_dir, f"audio_{vid}.m4a")
     
-    # 1. Download
-    logger.info(f"📥 Downloading: {url}")
-    subprocess.run([
+    # 1. Download (Optimized for Platform)
+    logger.info(f"📥 Downloading ({platform}): {url}")
+    
+    ytdlp_cmd = [
         "yt-dlp", "--no-warnings", "--quiet",
         "-f", "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480]/best",
         "--download-sections", "*0-60",
         "-o", video_path, url
-    ])
+    ]
     
-    # 2. Audio
+    # Reddit often needs specific handling for audio/video merge
+    if platform == "reddit":
+        ytdlp_cmd = ["yt-dlp", "--no-warnings", "--quiet", "-f", "bestvideo+bestaudio/best", "-o", video_path, url]
+
+    subprocess.run(ytdlp_cmd)
+    
+    # 2. Audio extraction
     subprocess.run([
         "yt-dlp", "--no-warnings", "--quiet",
         "-f", "bestaudio", "--extract-audio", "--audio-format", "m4a",
