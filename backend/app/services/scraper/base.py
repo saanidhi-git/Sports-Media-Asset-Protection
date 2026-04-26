@@ -231,7 +231,7 @@ def get_audio_fp_from_stream(url: str, duration_sec: int = settings.AUDIO_SEGMEN
     output_template = os.path.join(tmp_dir, "audio.%(ext)s")
 
     try:
-        subprocess.run(
+        result = subprocess.run(
             [
                 "yt-dlp", "--no-warnings", "--quiet",
                 "-f", "bestaudio", "--extract-audio", "--audio-format", "m4a",
@@ -244,6 +244,8 @@ def get_audio_fp_from_stream(url: str, duration_sec: int = settings.AUDIO_SEGMEN
         candidates = _glob.glob(os.path.join(tmp_dir, "audio.*"))
         if candidates and os.path.getsize(candidates[0]) > 0:
             return get_audio_fp(candidates[0])
+    except subprocess.CalledProcessError as e:
+        logger.warning(f"get_audio_fp_from_stream failed (code {e.returncode}): {e.stderr.strip()}")
     except Exception as e:
         logger.warning(f"get_audio_fp_from_stream failed: {e}")
     finally:
