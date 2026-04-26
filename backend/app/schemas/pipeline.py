@@ -89,11 +89,11 @@ class EnrichedDetectionResult(BaseModel):
     matched_asset_id: Optional[int]
     matched_asset_name: Optional[str]
     matched_asset_owner: Optional[str]
-    best_ref_frame_path: Optional[str]
-    matched_asset_frames: list[AssetFrameMinimal]
-    frame_similarities: list[float]
-    pdq_similarities: list[float]
-    uploader: Optional[str]
+    best_ref_frame_path: Optional[str] = None
+    matched_asset_frames: list[AssetFrameMinimal] = []
+    frame_similarities: list[float] = []
+    pdq_similarities: list[float] = []
+    uploader: Optional[str] = None
     comments: list[dict]
     like_count: Optional[int]
     view_count: Optional[int]

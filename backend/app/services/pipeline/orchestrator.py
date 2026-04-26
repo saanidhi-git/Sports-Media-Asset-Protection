@@ -89,7 +89,7 @@ def _match_against_assets(
             ai_match=(ai_decision == "HIGHLIGHT")
         )
 
-        logger.info(f"      🔍 Match check against '{asset.asset_name}': Score={score_data['final_score']:.3f} (pHash={p:.2f}, PDQ={pdq:.2f}, Meta={m:.2f})")
+        logger.info(f"      🔍 Match check against '{asset.asset_name}': Score={score_data['final_score']:.3f} (pHash={p:.2f}, PDQ={pdq:.2f}, Audio={a:.2f}, Meta={m:.2f})")
 
         if best_score_data is None or score_data["final_score"] > best_score_data["final_score"]:
             best_score_data = score_data
@@ -126,7 +126,7 @@ def _match_against_assets(
                 phash_score=best_score_data["phash_score"],
                 pdq_score=best_score_data["pdq_score"],
                 audio_score=best_score_data["audio_score"],
-                metadata_score=ai_m_score,
+                metadata_score=ai_m_score, # Boost with AI metadata analysis
                 ai_match=is_ai_match
             )
             final_ai_reason = ai_m_reason
@@ -443,6 +443,13 @@ def verify_scan_results(job_id: int):
 
             # 3. AI Analysis & Final Matching
             ai_decision, ai_reason = ai_moderate(sv.title, sv.description or "")
+            
+            if ai_decision == "DISCUSSION":
+                logger.info(f"   ⏭️ Skipping classified as DISCUSSION.")
+                sv.status = "SKIPPED_DISCUSSION" # Useful for UI filtering
+                db.commit()
+                continue
+
             scraped_text = f"{sv.title} {sv.description or ''}".strip()
             _match_against_assets(
                 db, sv, current_phashes, current_pdq_hashes, sv.audio_fp,

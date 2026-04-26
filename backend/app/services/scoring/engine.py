@@ -5,13 +5,13 @@ from typing import List, Optional, Dict
 logger = logging.getLogger(__name__)
 
 # Weights from reference script (v6.0)
-W_PHASH = 0.20
-W_PDQ = 0.30
-W_AUDIO = 0.50
+W_PHASH = 0.25
+W_PDQ = 0.35
+W_AUDIO = 0.40
 
 # Thresholds
-THRESHOLD_FLAG = 0.85
-THRESHOLD_REVIEW = 0.60
+THRESHOLD_VIOLATED = 0.85
+THRESHOLD_REVIEW = 0.55
 
 def phash_similarity(suspect_hashes: List[str], ref_hashes: List[str]) -> float:
     if not suspect_hashes or not ref_hashes:
@@ -55,8 +55,9 @@ def pdq_similarity(suspect_hashes: List[str], ref_hashes: List[str]) -> float:
                 if dist < min_dist:
                     min_dist = dist
         
-        # Using 64 as threshold for 0.0 score as per reference
-        score = max(0.0, 1.0 - (min_dist / 64.0))
+        # PDQ is 256-bit. A distance of 128 is "random". 
+        # We use 100 as the 0.0 threshold to be more sensitive to matches.
+        score = max(0.0, 1.0 - (min_dist / 100.0))
         return float(round(score, 4))
     except Exception as e:
         logger.warning(f"Error calculating PDQ similarity: {e}")
@@ -78,29 +79,21 @@ def audio_similarity(suspect_fp: Optional[str], ref_fp: Optional[str]) -> float:
         return 0.0
 
 def metadata_similarity(scraped_text: str, asset_description: str) -> float:
-    """
-    Returns 0.0–1.0 similarity.
-    Updated: Less strict than TF-IDF. Uses token overlap ratio.
-    """
     if not scraped_text or not asset_description:
         return 0.0
 
     try:
-        # Preprocessing: lower case and remove common short words
         s_tokens = set(t for t in scraped_text.lower().split() if len(t) > 3)
         a_tokens = set(t for t in asset_description.lower().split() if len(t) > 3)
         
         if not s_tokens or not a_tokens:
-            # Fallback to shorter words if no long ones exist
             s_tokens = set(scraped_text.lower().split())
             a_tokens = set(asset_description.lower().split())
             if not s_tokens or not a_tokens:
                 return 0.0
             
         intersection = s_tokens.intersection(a_tokens)
-        # Lenient: overlap relative to the smaller set of tokens
         score = len(intersection) / min(len(s_tokens), len(a_tokens))
-        
         return float(round(min(1.0, score), 4))
     except Exception as e:
         logger.warning(f"Error calculating metadata similarity: {e}")
@@ -114,6 +107,7 @@ def compute_verdict(
     ai_match: bool = False
 ) -> Dict:
     has_audio = audio_score > 0
+    has_meta = metadata_score > 0
     total_w = W_PHASH + W_PDQ
 
     if has_audio:
@@ -122,35 +116,25 @@ def compute_verdict(
     else:
         final_score = (W_PHASH / total_w) * phash_score + (W_PDQ / total_w) * pdq_score
 
-    if final_score >= THRESHOLD_FLAG:
-        verdict = "FLAG"
+    # Include Metadata as a booster for the final ranking
+    if has_meta:
+        final_score = (final_score * 0.8) + (metadata_score * 0.2)
+
+    if final_score >= THRESHOLD_VIOLATED:
+        verdict = "VIOLATED"
     elif final_score >= THRESHOLD_REVIEW:
         verdict = "REVIEW"
     else:
-        verdict = "DROP"
+        verdict = "CLEAN"
 
-    # --- USER SPECIFIC LOGIC ---
-    # 1. AI-Confirmed Match: If AI confirms + all available signals >= 40% -> Force REVIEW
-    if ai_match:
-        signals_above_40 = (
-            phash_score >= 0.4 and 
-            pdq_score >= 0.4 and 
-            (not has_audio or audio_score >= 0.4) and 
-            (not has_meta or metadata_score >= 0.4)
-        )
-        if signals_above_40:
-            logger.info("🤖 AI Confirmed + All signals > 40% -> Forcing REVIEW")
-            verdict = "REVIEW"
+    # AI Override Logic
+    if ai_match and verdict == "CLEAN" and final_score > 0.4:
+        logger.info("🤖 AI Confirmed Match -> Promoting CLEAN to REVIEW")
+        verdict = "REVIEW"
 
-    # 2. Absolute Match (90%+): If ALL signals >= 0.9 -> Force VIOLATED
-    signals_above_90 = (
-        phash_score >= 0.9 and 
-        pdq_score >= 0.9 and 
-        (not has_audio or audio_score >= 0.9) and 
-        (not has_meta or metadata_score >= 0.9)
-    )
-    if signals_above_90:
-        logger.info("🚨 Absolute Match -> Forcing VIOLATED status")
+    # Absolute Visual Match (90%+)
+    if phash_score >= 0.9 and pdq_score >= 0.8:
+        logger.info("🚨 High Visual Match -> Forcing VIOLATED status")
         verdict = "VIOLATED"
         
     return {
@@ -161,3 +145,4 @@ def compute_verdict(
         "final_score": float(round(final_score, 4)),
         "verdict": verdict
     }
+

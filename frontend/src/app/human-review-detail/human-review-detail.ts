@@ -312,9 +312,10 @@ export class HumanReviewDetail implements OnInit {
 
   getFrameUrl(filePath: string | undefined): string {
     if (!filePath) return '';
-    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-      return filePath;
-    }
+    // If it's already a full URL (Cloudinary), return it as is
+    if (filePath.startsWith('http')) return filePath;
+
+    // Local path normalization
     const normalizedPath = filePath.replace(/\\/g, '/');
     if (normalizedPath.startsWith('/uploads/')) return normalizedPath;
     if (normalizedPath.includes('uploads/')) {
