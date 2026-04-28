@@ -38,6 +38,7 @@ export interface Asset {
   created_at: string;
   status: string;
   user_id: number;
+  audio_fp?: string | null;
 }
 
 @Injectable({
