@@ -128,9 +128,13 @@ def compute_verdict(
         verdict = "CLEAN"
 
     # AI Override Logic
-    if ai_match and verdict == "CLEAN" and final_score > 0.4:
-        logger.info("🤖 AI Confirmed Match -> Promoting CLEAN to REVIEW")
-        verdict = "REVIEW"
+    if ai_match and verdict == "CLEAN":
+        if final_score > 0.4:
+            logger.info("🤖 AI Confirmed Match -> Promoting CLEAN to REVIEW")
+            verdict = "REVIEW"
+        elif phash_score > 0.5 and audio_score > 0.5:
+            logger.info("🤖 AI Confirmed Match with Strong Audio/pHash -> Promoting CLEAN to REVIEW")
+            verdict = "REVIEW"
 
     # Absolute Visual Match (90%+)
     if phash_score >= 0.9 and pdq_score >= 0.8:
