@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 
 # Model Fallback Chain — Free-Tier Models (confirmed working)
 MODEL_PRIORITY = [
-    "google/gemini-2.0-flash-lite-preview-02-05:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "google/gemma-2-9b-it:free",
+    "qwen/qwen-2.5-72b-instruct:free",
+    "meta-llama/llama-3.1-8b-instruct:free",
+    "mistralai/mistral-7b-instruct:free",
 ]
 
 class AgentState(TypedDict):
@@ -52,7 +52,8 @@ def call_gemini_moderator(state: AgentState) -> AgentState:
             llm = ChatGoogleGenerativeAI(
                 model="gemini-2.5-flash", 
                 temperature=0.1, 
-                google_api_key=settings.GEMINI_API_KEY
+                google_api_key=settings.GEMINI_API_KEY,
+                max_retries=0
             )
             messages = [
                 SystemMessage(content=system_prompt),
@@ -218,9 +219,10 @@ def ai_deep_analysis(
         try:
             logger.info("🧐 Deep Analysis attempting with LangChain and Google AI Studio Gemini API")
             llm = ChatGoogleGenerativeAI(
-                model="gemini-2.5-pro", 
+                model="gemini-2.5-flash", 
                 temperature=0.1, 
-                google_api_key=settings.GEMINI_API_KEY
+                google_api_key=settings.GEMINI_API_KEY,
+                max_retries=0
             )
             messages = [
                 SystemMessage(content=system_prompt),
