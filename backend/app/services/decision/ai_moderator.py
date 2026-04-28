@@ -4,6 +4,8 @@ import time
 from app.core.config import settings
 from typing import TypedDict, Literal
 from langgraph.graph import StateGraph, END
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage, SystemMessage
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +44,43 @@ def call_gemini_moderator(state: AgentState) -> AgentState:
         "Reply ONLY as: DECISION | REASON (one sentence, max 20 words)."
     )
     
-    user_content = f"{system_prompt}\n\nTitle: {state['title']}\nDescription: {state['description']}"
+    user_content = f"Title: {state['title']}\nDescription: {state['description']}"
+
+    if settings.GEMINI_API_KEY:
+        try:
+            logger.info("🤖 Attempting moderation with LangChain and Google AI Studio Gemini API")
+            llm = ChatGoogleGenerativeAI(
+                model="gemini-2.5-flash", 
+                temperature=0.1, 
+                google_api_key=settings.GEMINI_API_KEY
+            )
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_content)
+            ]
+            response = llm.invoke(messages)
+            content = response.content.strip()
+            
+            if "|" in content:
+                decision, reason = content.split("|", 1)
+                state["decision"] = decision.strip().upper()
+                state["reason"] = reason.strip()
+            else:
+                state["decision"] = "HIGHLIGHT" if "HIGHLIGHT" in content.upper() else "DISCUSSION"
+                state["reason"] = content
+            return state
+        except Exception as e:
+            logger.warning(f"LangChain Gemini moderation failed: {e}. Falling back to OpenRouter...")
+    
+    # OpenRouter Fallback Logic
+    user_content_openrouter = f"{system_prompt}\n\n{user_content}"
     
     for model_name in MODEL_PRIORITY:
         logger.info(f"🤖 Attempting moderation with model: {model_name}")
         payload = {
             "model": model_name,
             "messages": [
-                {"role": "user", "content": user_content}
+                {"role": "user", "content": user_content_openrouter}
             ],
             "temperature": 0.1,
             "max_tokens": 150
@@ -173,7 +204,6 @@ def ai_deep_analysis(
     )
     
     user_content = (
-        f"{system_prompt}\n\n"
         f"--- REGISTERED ASSET ---\n"
         f"NAME: {asset_name}\n"
         f"OWNER: {asset_owner}\n"
@@ -183,13 +213,43 @@ def ai_deep_analysis(
         f"DESCRIPTION: {scraped_desc}\n"
         f"TOP COMMENTS:\n{comments_str}"
     )
+
+    if settings.GEMINI_API_KEY:
+        try:
+            logger.info("🧐 Deep Analysis attempting with LangChain and Google AI Studio Gemini API")
+            llm = ChatGoogleGenerativeAI(
+                model="gemini-2.5-pro", 
+                temperature=0.1, 
+                google_api_key=settings.GEMINI_API_KEY
+            )
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_content)
+            ]
+            response = llm.invoke(messages)
+            content = response.content.strip()
+            
+            score = 0.0
+            reasoning = "AI Analysis Error: Response format mismatch."
+            import re
+            score_match = re.search(r"SCORE:\s*([0-1]\.[0-9]+|[01])", content, re.IGNORECASE)
+            if score_match:
+                score = float(score_match.group(1))
+            reason_match = re.search(r"REASONING:\s*(.*)", content, re.IGNORECASE | re.DOTALL)
+            if reason_match:
+                reasoning = reason_match.group(1).strip()
+            return score, reasoning
+        except Exception as e:
+            logger.warning(f"LangChain Gemini deep analysis failed: {e}. Falling back to OpenRouter...")
+            
+    user_content_openrouter = f"{system_prompt}\n\n{user_content}"
     
     for model_name in MODEL_PRIORITY:
         logger.info(f"🧐 Deep Analysis attempting with: {model_name}")
         payload = {
             "model": model_name,
             "messages": [
-                {"role": "user", "content": user_content}
+                {"role": "user", "content": user_content_openrouter}
             ],
             "temperature": 0.1,
             "max_tokens": 500

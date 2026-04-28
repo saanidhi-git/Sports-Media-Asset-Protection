@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     YOUTUBE_API_KEY: str
     TAVILY_API_KEY: str
     OPENROUTER_API_KEY: str
+    GEMINI_API_KEY: Optional[str] = None
     EXTERNAL_AGENT_KEY: str = "dev-key-123"
     
     # Cloudinary
