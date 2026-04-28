@@ -7,6 +7,13 @@ from langgraph.graph import StateGraph, END
 
 logger = logging.getLogger(__name__)
 
+# Model Fallback Chain — Free-Tier Models (confirmed working)
+MODEL_PRIORITY = [
+    "google/gemma-4-31b-it:free",
+    "google/gemma-3-12b-it:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+]
+
 class AgentState(TypedDict):
     title: str
     description: str
@@ -16,7 +23,8 @@ class AgentState(TypedDict):
 
 def call_gemini_moderator(state: AgentState) -> AgentState:
     """
-    Calls Gemini Pro via OpenRouter to classify the content with retry logic for 429s.
+    Calls Gemini Pro via OpenRouter to classify the content.
+    Includes retry logic for 429s and automatic model fallback.
     """
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -34,53 +42,68 @@ def call_gemini_moderator(state: AgentState) -> AgentState:
         "Reply ONLY as: DECISION | REASON (one sentence, max 20 words)."
     )
     
-    user_content = f"Title: {state['title']}\nDescription: {state['description']}"
+    user_content = f"{system_prompt}\n\nTitle: {state['title']}\nDescription: {state['description']}"
     
-    payload = {
-        "model": "google/gemini-pro-latest",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content}
-        ],
-        "temperature": 0.1
-    }
-    
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            with httpx.Client(timeout=15.0) as client:
-                resp = client.post(url, headers=headers, json=payload)
-                
-                if resp.status_code == 429:
-                    wait_time = (2 ** attempt) + 1
-                    logger.warning(f"⚠️ OpenRouter Rate Limit (429). Retrying in {wait_time}s... (Attempt {attempt+1}/{max_retries})")
-                    time.sleep(wait_time)
-                    continue
-                
-                resp.raise_for_status()
-                data = resp.json()
-                content = data["choices"][0]["message"]["content"].strip()
-                
-                if "|" in content:
-                    decision, reason = content.split("|", 1)
-                    state["decision"] = decision.strip().upper()
-                    state["reason"] = reason.strip()
-                else:
-                    state["decision"] = "HIGHLIGHT" if "HIGHLIGHT" in content.upper() else "DISCUSSION"
-                    state["reason"] = content
-                return state
+    for model_name in MODEL_PRIORITY:
+        logger.info(f"🤖 Attempting moderation with model: {model_name}")
+        payload = {
+            "model": model_name,
+            "messages": [
+                {"role": "user", "content": user_content}
+            ],
+            "temperature": 0.1,
+            "max_tokens": 150
+        }
+        
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                with httpx.Client(timeout=30.0) as client:
+                    resp = client.post(url, headers=headers, json=payload)
                     
-        except Exception as e:
-            if attempt == max_retries - 1:
-                logger.error(f"Gemini moderation exhausted retries: {e}")
-                state["decision"] = "HIGHLIGHT"
-                state["reason"] = f"AI moderation unavailable: {e}"
-                return state
-            
-            wait_time = (2 ** attempt) + 1
-            logger.warning(f"Gemini moderation attempt {attempt+1} failed: {e}. Retrying in {wait_time}s...")
-            time.sleep(wait_time)
-            
+                    if resp.status_code == 429:
+                        wait_time = (2 ** attempt) + 1
+                        logger.warning(f"⚠️ {model_name} Rate Limit (429). Retrying in {wait_time}s...")
+                        time.sleep(wait_time)
+                        continue
+                    
+                    resp.raise_for_status()
+                    data = resp.json()
+                    
+                    choice = data["choices"][0]
+                    message = choice.get("message", {})
+                    content = message.get("content")
+                    
+                    # Handle models that put response in reasoning or if content is null
+                    if not content and "reasoning" in message:
+                        content = message["reasoning"]
+                    
+                    if not content:
+                        logger.warning(f"Empty content from {model_name}")
+                        continue
+
+                    content = content.strip()
+                    
+                    if "|" in content:
+                        decision, reason = content.split("|", 1)
+                        state["decision"] = decision.strip().upper()
+                        state["reason"] = reason.strip()
+                    else:
+                        state["decision"] = "HIGHLIGHT" if "HIGHLIGHT" in content.upper() else "DISCUSSION"
+                        state["reason"] = content
+                    return state
+                        
+            except Exception as e:
+                logger.warning(f"Moderation attempt {attempt+1} failed with {model_name}: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(2)
+                else:
+                    logger.error(f"❌ {model_name} exhausted. Shifting to fallback if available.")
+                    break # Break out of retry loop to try next model
+        
+    # Final fallback if all models fail
+    state["decision"] = "HIGHLIGHT"
+    state["reason"] = "AI moderation exhausted all models. Defaulting to safe review state."
     return state
 
 # Build the LangGraph
@@ -95,8 +118,7 @@ moderation_graph = create_moderation_graph()
 
 def ai_moderate(title: str, description: str = "") -> tuple[str, str]:
     """
-    Classifies a post title and description using Gemini Pro via LangGraph.
-    Returns (decision, reason)
+    Classifies a post title and description using Gemini via LangGraph with fallback support.
     """
     initial_state: AgentState = {
         "title": title,
@@ -122,7 +144,7 @@ def ai_deep_analysis(
     asset_owner: str
 ) -> tuple[float, str]:
     """
-    Performs a High-Fidelity Contextual Match using Gemini Thinking with retry logic.
+    Performs a High-Fidelity Contextual Match with automatic model fallback logic.
     """
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -151,6 +173,7 @@ def ai_deep_analysis(
     )
     
     user_content = (
+        f"{system_prompt}\n\n"
         f"--- REGISTERED ASSET ---\n"
         f"NAME: {asset_name}\n"
         f"OWNER: {asset_owner}\n"
@@ -161,51 +184,63 @@ def ai_deep_analysis(
         f"TOP COMMENTS:\n{comments_str}"
     )
     
-    payload = {
-        "model": "google/gemini-pro-latest",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content}
-        ],
-        "temperature": 0.1
-    }
-    
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            with httpx.Client(timeout=25.0) as client:
-                resp = client.post(url, headers=headers, json=payload)
-                
-                if resp.status_code == 429:
-                    wait_time = ( attempt * 5 ) + 5
-                    logger.warning(f"⚠️ Deep Analysis Rate Limit (429). Retrying in {wait_time}s...")
-                    time.sleep(wait_time)
-                    continue
+    for model_name in MODEL_PRIORITY:
+        logger.info(f"🧐 Deep Analysis attempting with: {model_name}")
+        payload = {
+            "model": model_name,
+            "messages": [
+                {"role": "user", "content": user_content}
+            ],
+            "temperature": 0.1,
+            "max_tokens": 500
+        }
+        
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                with httpx.Client(timeout=25.0) as client:
+                    resp = client.post(url, headers=headers, json=payload)
                     
-                resp.raise_for_status()
-                data = resp.json()
-                content = data["choices"][0]["message"]["content"].strip()
-                
-                score = 0.0
-                reasoning = "AI Analysis Error: Response format mismatch."
-                
-                import re
-                score_match = re.search(r"SCORE:\s*([0-1]\.[0-9]+|[01])", content, re.IGNORECASE)
-                if score_match:
-                    score = float(score_match.group(1))
-                
-                reason_match = re.search(r"REASONING:\s*(.*)", content, re.IGNORECASE | re.DOTALL)
-                if reason_match:
-                    reasoning = reason_match.group(1).strip()
-                
-                return score, reasoning
-                
-        except Exception as e:
-            if attempt == max_retries - 1:
-                logger.error(f"AI Deep Analysis exhausted retries: {e}")
-                return 0.0, f"AI Analysis Unavailable: {e}"
-            
-            wait_time = (attempt * 5) + 5
-            time.sleep(wait_time)
-            
-    return 0.0, "AI Analysis Unavailable after retries."
+                    if resp.status_code == 429:
+                        wait_time = (attempt * 5) + 5
+                        logger.warning(f"⚠️ {model_name} Rate Limit (429). Retrying in {wait_time}s...")
+                        time.sleep(wait_time)
+                        continue
+                        
+                    resp.raise_for_status()
+                    data = resp.json()
+                    message = data["choices"][0].get("message", {})
+                    content = message.get("content")
+                    
+                    if not content and "reasoning" in message:
+                        content = message["reasoning"]
+                    
+                    if not content:
+                        logger.warning(f"Empty content from {model_name} in deep analysis")
+                        continue
+
+                    content = content.strip()
+                    
+                    score = 0.0
+                    reasoning = "AI Analysis Error: Response format mismatch."
+                    
+                    import re
+                    score_match = re.search(r"SCORE:\s*([0-1]\.[0-9]+|[01])", content, re.IGNORECASE)
+                    if score_match:
+                        score = float(score_match.group(1))
+                    
+                    reason_match = re.search(r"REASONING:\s*(.*)", content, re.IGNORECASE | re.DOTALL)
+                    if reason_match:
+                        reasoning = reason_match.group(1).strip()
+                    
+                    return score, reasoning
+                    
+            except Exception as e:
+                logger.warning(f"Deep Analysis attempt {attempt+1} failed with {model_name}: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(3)
+                else:
+                    logger.error(f"❌ {model_name} exhausted for deep analysis. Shifting to fallback.")
+                    break
+                    
+    return 0.0, "AI Analysis Unavailable: All models in priority chain exhausted."
