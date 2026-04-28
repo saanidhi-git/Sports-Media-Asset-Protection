@@ -171,8 +171,13 @@
               <div class="v-title">{{ v.title }}</div>
               <div class="v-meta">{{ v.uploader }} • {{ v.url }}</div>
             </div>
-            <div class="v-status" [ngClass]="v.frame_paths?.length ? 'ready' : 'pending'">
-              {{ v.frame_paths?.length ? 'READY' : 'WAITING FOR AGENT' }}
+            <div class="v-status" 
+                 [ngClass]="{
+                   'ready': v.frame_paths?.length && v.frame_paths[0] !== 'FAILED',
+                   'failed': v.frame_paths?.length && v.frame_paths[0] === 'FAILED',
+                   'pending': !v.frame_paths?.length
+                 }">
+              {{ v.frame_paths?.length ? (v.frame_paths[0] === 'FAILED' ? 'FAILED' : 'READY') : 'WAITING FOR AGENT' }}
             </div>
           </div>
         </div>

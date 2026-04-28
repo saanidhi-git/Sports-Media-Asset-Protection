@@ -100,7 +100,16 @@ def process_job(job_id):
         tmp = tempfile.mkdtemp(prefix="sports_guardian_")
         try:
             frames, audio = extract_stream_data(v, tmp)
-            if not frames: continue
+            if not frames: 
+                logger.warning(f"   ⚠️ Reporting extraction failure to cloud...")
+                try:
+                    requests.post(f"{API_BASE_URL}/pipeline/external-push-failed", data={
+                        "job_id": job_id, "api_key": EXTERNAL_AGENT_KEY, 
+                        "platform_video_id": v["platform_video_id"]
+                    })
+                except Exception as e:
+                    pass
+                continue
             
             logger.info("📤 Pushing raw data to cloud...")
             

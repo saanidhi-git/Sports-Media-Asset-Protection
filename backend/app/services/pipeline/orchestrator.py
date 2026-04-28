@@ -402,6 +402,10 @@ def verify_scan_results(job_id: int):
         
         scraped_videos = db.query(ScrapedVideo).filter(ScrapedVideo.scan_job_id == job_id).all()
         for sv in scraped_videos:
+            if sv.frame_paths == ["FAILED"]:
+                logger.warning(f"   ⏭️ Skipping '{sv.platform_video_id}' because local agent failed to extract it.")
+                continue
+
             logger.info(f"──── 🎬 Processing: {sv.title[:60]}")
             
             # 1. Generate Audio Hash on Cloud

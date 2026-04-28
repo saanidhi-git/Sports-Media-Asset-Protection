@@ -77,6 +77,45 @@ def push_external_raw(
     return {"status": "accepted", "job_id": job.id}
 
 
+@router.post("/external-push-failed", status_code=status.HTTP_202_ACCEPTED)
+def push_external_failed(
+    job_id: int = Form(...),
+    api_key: str = Form(...),
+    platform_video_id: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    """
+    Called by local agent if a stream could not be extracted.
+    Marks the video as FAILED so the job doesn't hang indefinitely.
+    """
+    if api_key != settings.EXTERNAL_AGENT_KEY:
+        raise HTTPException(status_code=403, detail="Invalid external agent API key.")
+
+    job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Scan job not found.")
+
+    scraped = db.query(ScrapedVideo).filter(
+        ScrapedVideo.scan_job_id == job_id,
+        ScrapedVideo.platform_video_id == platform_video_id
+    ).first()
+
+    if scraped:
+        scraped.frame_paths = ["FAILED"]
+        db.commit()
+
+    # Update Job Status (check if we are done waiting)
+    all_videos = db.query(ScrapedVideo).filter(ScrapedVideo.scan_job_id == job_id).all()
+    ready_count = sum(1 for v in all_videos if v.frame_paths and len(v.frame_paths) > 0)
+    
+    if ready_count >= len(all_videos):
+        job.status = "READY_FOR_VERIFICATION"
+        db.commit()
+
+    return {"status": "accepted", "job_id": job.id}
+
+
+
 @router.post("/scan", response_model=ScanJobOut, status_code=status.HTTP_202_ACCEPTED)
 def start_scan(
     request: ScanRequest,

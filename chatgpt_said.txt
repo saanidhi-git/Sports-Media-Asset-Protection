@@ -1,66 +1,48 @@
-I will search for .pt in the entire project to find any references to model     
-  weights.
+C:\Users\Shree\OneDrive\Desktop\search agent>uv run agent_job_40.py  
 
-  ✓  SearchText  '\.pt' within ./ → Found 13 matches
+==================================================
+🚀 FAST HYBRID EXTRACTION — Job #40
+==================================================
 
-✦ I will read the prediction_output.json file.
+[1/6] Streaming: Real Salt Lake vs. Inter Miami CF | Full Match Hig...
+[INFO] 🌐 Fetching stream link: https://www.youtube.com/watch?v=EgUSZa-Vt4c
+[INFO] 🎵 Capturing audio chunk...
+[INFO] 🎞️  Capturing 8 frames from stream...
+[INFO] 📤 Pushing raw data to cloud...
+   ✅ Data pushed successfully.
+[2/6] Streaming: INTER MIAMI de MESSI GANÓ 2-0 vs REAL SALT LAKE co...
+[INFO] 🌐 Fetching stream link: https://www.youtube.com/watch?v=XjXIKljkYqk
+[INFO] 🎵 Capturing audio chunk...
+[INFO] 🎞️  Capturing 8 frames from stream...
+[INFO] 📤 Pushing raw data to cloud...
+   ✅ Data pushed successfully.
+[3/6] Streaming: Inter Miami vs. Real Salt Lake | Season Opener, Lu...
+[INFO] 🌐 Fetching stream link: https://www.youtube.com/watch?v=aneVCCq9RHo
+[INFO] 🎵 Capturing audio chunk...
+[INFO] 🎞️  Capturing 8 frames from stream...
+[INFO] 📤 Pushing raw data to cloud...
+   ✅ Data pushed successfully.
+[4/6] Streaming: Inter Miami CF delivered a strong away performance...
+[INFO] 🌐 Fetching stream link: https://www.instagram.com/reel/DXdnt6-jYVJ/
+[INFO] 🎵 Capturing audio chunk...
+[INFO] 🎞️  Capturing 8 frames from stream...
+[INFO] 📤 Pushing raw data to cloud...
+   ✅ Data pushed successfully.
+[5/6] Streaming: Instagram...
+[INFO] 🌐 Fetching stream link: https://www.instagram.com/reel/DXfCrQwiNdr/
+[INFO] 🎵 Capturing audio chunk...
+[INFO] 🎞️  Capturing 8 frames from stream...
+[INFO] 📤 Pushing raw data to cloud...
+   ✅ Data pushed successfully.
+[6/6] Streaming: Inter Miami's Best Moments of the match against Re...
+[INFO] 🌐 Fetching stream link: https://www.instagram.com/p/DXdhQzSjHSU/
+ERROR: [Instagram] DXdhQzSjHSU: There is no video in this post 
+[ERROR]    ❌ Could not get stream: Command '['yt-dlp', '--no-warnings', '--quiet', '--get-url', '-f', 'bestvideo[height<=480]/best[height<=480]/best', 'https://www.instagram.com/p/DXdhQzSjHSU/']' returned non-zero exit status 1.
 
-  ✓  ReadFile  prediction_output.json
+==================================================
+🏁 ALL TARGETS UPLOADED!
+👉 ACTION: Return to dashboard and click 'COMPUTE HASHES & VERIFY'
+==================================================
 
-✦ I have tested the model's predict method using the provided image URL and stored  the output in prediction_output.json.
 
-  Currently, the service at
-  https://sports-media-asset-protection-model.onrender.com is in a degraded state
-  because the model weights (rtdetrv2-l.pt) have not been successfully loaded or 
-  found on the server. As a result, the /predict endpoint returns a 503 Service  
-  Unavailable error with the message "Model not loaded. Check /health.".
-
-  Test Results
-   - Endpoint: https://sports-media-asset-protection-model.onrender.com/predict   
-   - Image URL: scraped_frame_tmpx6ftgsfo_wf90mh.jpg
-     (https://res.cloudinary.com/dm8ojfm4a/image/upload/v1777358600/sports-guardia     n/scraped_frames/tmpx6ftgsfo_wf90mh.jpg)
-   - Status Code: 503
-   - Output File: prediction_output.json
-
-  Contents of prediction_output.json
-   1 {
-   2   "detail": "Model not loaded. Check /health."
-   3 }
-
-  Analysis of the model/ folder
-  After reviewing model/main.py and model/README.md, it is clear that:
-   1. The service depends on either a local weights/rtdetrv2-l.pt file or a       
-      MODEL_DOWNLOAD_URL environment variable to fetch weights on startup.        
-   2. The live health check (/health) confirms weights_exist: false, which is     
-      causing the predict method to fail.
-   3. To resolve this, the Render environment needs to be configured with a valid 
-      MODEL_DOWNLOAD_URL or have the weights uploaded directly.
-      PROPOSED SOLUTION
-
-We propose a scalable, AI-driven system designed to address modern sports media piracy through real-time detection, intelligent verification, and automated enforcement. The solution integrates multiple advanced technologies into a unified pipeline, ensuring accuracy, speed, and adaptability against evolving piracy techniques.
-
-1. Agentic AI Pipeline
-   -> Agent 1: Metadata comparison + similarity detection
-   -> Agent 2: Automated copyright filing / takedown actions
-
-2. Custom Detection Model
-   -> YOLOv8 + RT-DETR hybrid model
-   -> Detect gambling app logos and unauthorized overlays
-
-3. Scoreboard Intelligence
-   -> YOLOv8 + OCR for scoreboard extraction
-   -> Validate runs, players, match info against asset database
-
-4. Blockchain Integration
-   -> Smart contracts for asset ownership
-   -> Immutable storage of media fingerprints (hash-based proof)
-
-This approach enables end-to-end automation, from discovery to action, reducing manual effort and response time. It provides a robust and reliable framework capable of handling large-scale, cross-platform piracy in real-time.EXISTING SOLUTIONS & LIMITATIONS
-
-1. Platform-Based Detection Systems (Content ID / DRM)
-   -> Used by major platforms for copyright protection
-   -> Lack multi-modal analysis and fail against modified/cropped content
-
-2. Manual Reporting & Takedown (DMCA / Legal Process)
-   -> Relies on human intervention for detection and action
-   -> Slow, reactive, and ineffective for real-time, cross-platform piracy
+C:\Users\Shree\OneDrive\Desktop\search agent>
