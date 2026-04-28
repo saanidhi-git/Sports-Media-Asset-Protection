@@ -1,6 +1,6 @@
-# 🛡️ SHIELD_MEDIA: Advanced Sports Media Asset Protection
+# 🛡️ SPORTS GUARDIAN: Advanced Sports Media Asset Protection
 
-**SHIELD_MEDIA** is a high-performance, anti-piracy ecosystem designed for sports media rights holders. It provides a "Mission Control" interface to register protected assets, deploy scraping nodes across social platforms, and identify copyright infringements using multi-modal fingerprinting (Visual, Audio, and Scoreboard OCR).
+**SPORTS GUARDIAN** is a high-performance, anti-piracy ecosystem designed for sports media rights holders. It provides a "Mission Control" interface to register protected assets, deploy scraping nodes across social platforms, and identify copyright infringements using multi-modal fingerprinting (Visual, Audio, and Scoreboard OCR).
 
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Angular](https://img.shields.io/badge/Frontend-Angular%2019-DD0031?style=for-the-badge&logo=angular&logoColor=white)](https://angular.dev/)
@@ -23,7 +23,7 @@
 
 ### 3. Verdict Engine (AI & CV Moderation)
 - **Scoreboard OCR:** Uses YOLO-based detection (RT-DETRv2) to sync match time/score with the master asset.
-- **AI Moderator:** Agentic reasoning using Gemini 2.0 to analyze metadata and piracy signals.
+- **AI Moderator:** Agentic reasoning using Gemini Pro (`google/gemini-pro-latest`) to analyze metadata and piracy signals.
 - **Human-in-the-Loop:** A dedicated review queue for moderate-confidence detections.
 
 ### 4. Enforcement & Audit
@@ -74,7 +74,7 @@ Automated generation of copyright notices and takedown reports.
 | **Frontend** | Angular 19+, Signals, Standalone Components, Neo-Brutalism UI |
 | **CV Model** | RT-DETRv2, Ultralytics, FastAPI (Microservice) |
 | **Database** | PostgreSQL, Alembic |
-| **AI/LLM** | Gemini 2.0 Flash, Ollama |
+| **AI/LLM** | Gemini Pro (`google/gemini-pro-latest`), Ollama |
 
 ---
 

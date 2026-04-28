@@ -4,7 +4,7 @@ import { Injectable, signal, effect } from '@angular/core';
   providedIn: 'root'
 })
 export class LayoutService {
-  private readonly STORAGE_KEY = 'shield_media_sidebar_collapsed';
+  private readonly STORAGE_KEY = 'sports_guardian_sidebar_collapsed';
   
   public readonly isCollapsed = signal<boolean>(this.loadState());
 

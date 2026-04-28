@@ -1,6 +1,6 @@
 # 🧠 RT-DETRv2 Detection Microservice
 
-Standalone, separately-deployable object detection service for the **SHIELD_MEDIA** anti-piracy system.
+Standalone, separately-deployable object detection service for the **SPORTS GUARDIAN** anti-piracy system.
 
 ---
 

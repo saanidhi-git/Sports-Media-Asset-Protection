@@ -182,7 +182,7 @@ export class HumanReviewDetail implements OnInit {
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #000; padding: 2px; border: 1px solid #222; border-radius: 8px; color: #fff;">
         <!-- HEADER: Blue Branding -->
         <div style="background-color: #000; color: #00f3ff; padding: 30px; text-align: center; border-radius: 6px 6px 0 0; border-bottom: 2px solid #00f3ff;">
-          <h1 style="margin: 0; font-size: 32px; letter-spacing: 4px; font-weight: 900;">🛡️ SHIELD MEDIA</h1>
+          <h1 style="margin: 0; font-size: 32px; letter-spacing: 4px; font-weight: 900;">🛡️ SPORTS GUARDIAN</h1>
           <h2 style="margin: 8px 0 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #60a5fa; letter-spacing: 2px;">Enforcement Terminal Notice</h2>
         </div>
         
@@ -239,7 +239,7 @@ export class HumanReviewDetail implements OnInit {
             
             <p style="margin-top: 20px; color: #888;">
               Sincerely,<br>
-              <strong style="color: #00f3ff;">SHIELD_MEDIA ENFORCEMENT OPERATOR ${this.operatorName()}</strong><br>
+              <strong style="color: #00f3ff;">SPORTS GUARDIAN ENFORCEMENT OPERATOR ${this.operatorName()}</strong><br>
               SportGuardian AI Protection Team<br>
               Date: ${date}
             </p>

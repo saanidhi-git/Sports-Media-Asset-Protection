@@ -10,7 +10,7 @@ base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 load_dotenv(os.path.join(base_dir, ".env"))
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "SHIELD_MEDIA"
+    PROJECT_NAME: str = "SPORTS GUARDIAN"
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     SMTP_USER: Optional[str] = None
     SMTP_PASS: Optional[str] = None
     EMAILS_FROM_EMAIL: Optional[str] = None
-    EMAILS_FROM_NAME: Optional[str] = "SHIELD_MEDIA"
+    EMAILS_FROM_NAME: Optional[str] = "SPORTS GUARDIAN"
 
     @field_validator("EMAILS_FROM_EMAIL", mode="before")
     @classmethod

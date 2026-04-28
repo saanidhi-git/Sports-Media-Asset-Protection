@@ -21,15 +21,20 @@ logger  = logging.getLogger(__name__)
 _SESSION = requests.Session()
 _SESSION.headers.update({"User-Agent": "SportGuardianBot/1.0"})
 
-_VIDEO_DOMAINS = {"v.redd.it", "youtube.com", "youtu.be", "streamable.com", "gfycat.com"}
+_VIDEO_DOMAINS = {"v.redd.it", "youtube.com", "youtu.be", "streamable.com"}
 
 
 def _is_video_post(post: dict) -> bool:
+    url = post.get("url", "").lower()
+    
+    # Strictly ignore GIFs and images
+    if url.endswith(('.gif', '.gifv', '.jpg', '.jpeg', '.png', '.webp')):
+        return False
+        
     if post.get("is_video"):
         return True
     if post.get("post_hint") in ("hosted:video", "rich:video"):
         return True
-    url = post.get("url", "").lower()
     return any(d in url for d in _VIDEO_DOMAINS)
 
 

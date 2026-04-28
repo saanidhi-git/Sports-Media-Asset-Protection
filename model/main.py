@@ -1,5 +1,5 @@
 """
-SHIELD_MEDIA — RT-DETRv2 Object Detection Microservice
+SPORTS GUARDIAN — RT-DETRv2 Object Detection Microservice
 Designed for standalone deployment on Render / Railway / Docker.
 
 Model weights are downloaded on startup from a configurable URL,
@@ -24,7 +24,7 @@ logging.basicConfig(
 logger = logging.getLogger("ModelService")
 
 app = FastAPI(
-    title="SHIELD_MEDIA RT-DETRv2 Detection Service",
+    title="SPORTS GUARDIAN RT-DETRv2 Detection Service",
     version="1.0.0",
 )
 

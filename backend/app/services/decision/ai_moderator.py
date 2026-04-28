@@ -15,7 +15,7 @@ class AgentState(TypedDict):
 
 def call_gemini_moderator(state: AgentState) -> AgentState:
     """
-    Calls Gemini Flash via OpenRouter to classify the content.
+    Calls Gemini Pro via OpenRouter to classify the content.
     """
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -36,7 +36,7 @@ def call_gemini_moderator(state: AgentState) -> AgentState:
     user_content = f"Title: {state['title']}\nDescription: {state['description']}"
     
     payload = {
-        "model": "google/gemini-2.0-flash-001",
+        "model": "google/gemini-pro-latest",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content}
@@ -79,7 +79,7 @@ moderation_graph = create_moderation_graph()
 
 def ai_moderate(title: str, description: str = "") -> tuple[str, str]:
     """
-    Classifies a post title and description using Gemini Flash via LangGraph.
+    Classifies a post title and description using Gemini Pro via LangGraph.
     Returns (decision, reason)
     """
     initial_state: AgentState = {
@@ -148,7 +148,7 @@ def ai_deep_analysis(
     )
     
     payload = {
-        "model": "google/gemini-2.0-flash-001",
+        "model": "google/gemini-pro-latest",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content}

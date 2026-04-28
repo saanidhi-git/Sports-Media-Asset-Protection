@@ -12,7 +12,7 @@ import { LayoutService } from '../../services/layout';
     <aside class="sidebar" [class.collapsed]="isCollapsed()">
       <div class="brand">
         <span class="brand-icon">🛡️</span>
-        <span class="brand-name" *ngIf="!isCollapsed()">SHIELD_MEDIA</span>
+        <span class="brand-name" *ngIf="!isCollapsed()">SPORTS GUARDIAN</span>
       </div>
 
       <button class="toggle-btn" (click)="toggleSidebar()">

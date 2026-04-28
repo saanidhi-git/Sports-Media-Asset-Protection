@@ -1,7 +1,7 @@
 # 🛡️ Sports Guardian AI: Master Technical Documentation & Implementation Plan
 
 ## 1. Executive Summary
-**Sports Guardian AI** is an advanced, multi-agentic ecosystem designed to protect high-value sports media assets in real-time. By combining **Local Scraping Nodes**, **Two-Agent AI Orchestration (Gemini 2.0)**, **Computer Vision (YOLO/OCR)**, and **Blockchain Proof-of-Ownership**, the system closes the critical "Match Over" gap where $28B in revenue is lost annually to piracy.
+**Sports Guardian AI** is an advanced, multi-agentic ecosystem designed to protect high-value sports media assets in real-time. By combining **Local Scraping Nodes**, **Two-Agent AI Orchestration (Gemini Pro)**, **Computer Vision (YOLO/OCR)**, and **Blockchain Proof-of-Ownership**, the system closes the critical "Match Over" gap where $28B in revenue is lost annually to piracy.
 
 ---
 
@@ -54,7 +54,7 @@ The system operates as a distributed network of specialized nodes:
 
 ### 3.4 Pillar 4: Two-Agent AI Architecture
 *   **Agent 1: The Moderator (Context Analysis):**
-    *   Uses Gemini 2.0 Flash to analyze metadata + comments.
+    *   Uses Gemini Pro (`google/gemini-pro-latest`) to analyze metadata + comments.
     *   **Chain of Reaction:** Registered Asset -> Content Comparison -> Audience Signals -> Verdict.
 *   **Agent 2: The Enforcer (Action Taking):**
     *   Verifies ownership via the blockchain.
@@ -92,6 +92,6 @@ The system operates as a distributed network of specialized nodes:
 
 *   **Phase 1: The Vault:** pHash/PDQ implementation and Blockchain anchoring.
 *   **Phase 2: The Radar:** Local Scraping engine for HLS stream extraction.
-*   **Phase 3: The Brain:** YOLO scoreboard detection and Gemini 2.0 integration.
+*   **Phase 3: The Brain:** YOLO scoreboard detection and Gemini Pro integration.
 *   **Phase 4: The Enforcer:** LangGraph orchestration and automated reporting.
 *   **Phase 5: Mission Control:** Neo-Brutalism UI integration for real-time tracking.
