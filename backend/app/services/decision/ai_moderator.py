@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 # Model Fallback Chain — Free-Tier Models (confirmed working)
 MODEL_PRIORITY = [
-    "google/gemma-4-31b-it:free",
-    "google/gemma-3-12b-it:free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
+    "google/gemini-2.0-flash-lite-preview-02-05:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "google/gemma-2-9b-it:free",
 ]
 
 class AgentState(TypedDict):
