@@ -92,10 +92,12 @@ def scrape_and_fingerprint(query: str, limit: int, num_frames: int = 8, early_ex
     """
     posts: list[dict] = []
     after: str | None = None
+    # Enforce video-only results natively at the Reddit API level
+    video_query = f"{query} (site:v.redd.it OR site:youtube.com OR site:streamable.com)"
 
     while len(posts) < limit:
         try:
-            data = _search_page(query, after)
+            data = _search_page(video_query, after)
         except Exception as e:
             logger.error(f"❌ Reddit search error: {e}")
             break

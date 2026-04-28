@@ -84,10 +84,10 @@ class Settings(BaseSettings):
         if db_url:
             if db_url.startswith("postgres://"):
                 db_url = db_url.replace("postgres://", "postgresql://", 1)
-            print(f"📡 DATABASE: Using Supabase/Cloud URL")
+            print(f"DATABASE: Using Supabase/Cloud URL")
             return db_url
             
-        print("⚠️ DATABASE: No DATABASE_URL found, falling back to localhost")
+        print("WARNING DATABASE: No DATABASE_URL found, falling back to localhost")
         user = info.data.get('POSTGRES_USER')
         password = quote_plus(str(info.data.get('POSTGRES_PASSWORD', '')))
         server = info.data.get('POSTGRES_SERVER')
