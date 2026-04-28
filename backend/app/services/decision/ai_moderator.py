@@ -1,5 +1,6 @@
 import logging
 import httpx
+import time
 from app.core.config import settings
 from typing import TypedDict, Literal
 from langgraph.graph import StateGraph, END
@@ -15,14 +16,14 @@ class AgentState(TypedDict):
 
 def call_gemini_moderator(state: AgentState) -> AgentState:
     """
-    Calls Gemini Pro via OpenRouter to classify the content.
+    Calls Gemini Pro via OpenRouter to classify the content with retry logic for 429s.
     """
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/google/gemini-cli", # Site URL for OpenRouter
-        "X-Title": "Sports Guardian", # Site title for OpenRouter
+        "HTTP-Referer": "https://github.com/saanidhi-git/Sports-Media-Asset-Protection",
+        "X-Title": "Sports Guardian",
     }
     
     system_prompt = (
@@ -44,27 +45,42 @@ def call_gemini_moderator(state: AgentState) -> AgentState:
         "temperature": 0.1
     }
     
-    try:
-        with httpx.Client(timeout=10.0) as client:
-            resp = client.post(url, headers=headers, json=payload)
-            resp.raise_for_status()
-            data = resp.json()
-            content = data["choices"][0]["message"]["content"].strip()
-            
-            if "|" in content:
-                decision, reason = content.split("|", 1)
-                state["decision"] = decision.strip().upper()
-                state["reason"] = reason.strip()
-            else:
-                # Fallback parsing
-                state["decision"] = "HIGHLIGHT" if "HIGHLIGHT" in content.upper() else "DISCUSSION"
-                state["reason"] = content
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                resp = client.post(url, headers=headers, json=payload)
                 
-    except Exception as e:
-        logger.warning(f"Gemini moderation call failed: {e}")
-        state["decision"] = "HIGHLIGHT"
-        state["reason"] = f"AI moderation unavailable: {e}"
-        
+                if resp.status_code == 429:
+                    wait_time = (2 ** attempt) + 1
+                    logger.warning(f"⚠️ OpenRouter Rate Limit (429). Retrying in {wait_time}s... (Attempt {attempt+1}/{max_retries})")
+                    time.sleep(wait_time)
+                    continue
+                
+                resp.raise_for_status()
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"].strip()
+                
+                if "|" in content:
+                    decision, reason = content.split("|", 1)
+                    state["decision"] = decision.strip().upper()
+                    state["reason"] = reason.strip()
+                else:
+                    state["decision"] = "HIGHLIGHT" if "HIGHLIGHT" in content.upper() else "DISCUSSION"
+                    state["reason"] = content
+                return state
+                    
+        except Exception as e:
+            if attempt == max_retries - 1:
+                logger.error(f"Gemini moderation exhausted retries: {e}")
+                state["decision"] = "HIGHLIGHT"
+                state["reason"] = f"AI moderation unavailable: {e}"
+                return state
+            
+            wait_time = (2 ** attempt) + 1
+            logger.warning(f"Gemini moderation attempt {attempt+1} failed: {e}. Retrying in {wait_time}s...")
+            time.sleep(wait_time)
+            
     return state
 
 # Build the LangGraph
@@ -106,8 +122,7 @@ def ai_deep_analysis(
     asset_owner: str
 ) -> tuple[float, str]:
     """
-    Performs a High-Fidelity Contextual Match using Gemini Thinking.
-    Returns (score, detailed_reasoning).
+    Performs a High-Fidelity Contextual Match using Gemini Thinking with retry logic.
     """
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -117,7 +132,6 @@ def ai_deep_analysis(
         "X-Title": "Sports Guardian AI",
     }
     
-    # Format comments for context
     comments_str = "\n".join([f"- {c['author']}: {c['text']}" for c in scraped_comments[:5]])
     if not comments_str:
         comments_str = "No comments available."
@@ -156,28 +170,42 @@ def ai_deep_analysis(
         "temperature": 0.1
     }
     
-    try:
-        with httpx.Client(timeout=20.0) as client:
-            resp = client.post(url, headers=headers, json=payload)
-            resp.raise_for_status()
-            data = resp.json()
-            content = data["choices"][0]["message"]["content"].strip()
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            with httpx.Client(timeout=25.0) as client:
+                resp = client.post(url, headers=headers, json=payload)
+                
+                if resp.status_code == 429:
+                    wait_time = ( attempt * 5 ) + 5
+                    logger.warning(f"⚠️ Deep Analysis Rate Limit (429). Retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                    continue
+                    
+                resp.raise_for_status()
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"].strip()
+                
+                score = 0.0
+                reasoning = "AI Analysis Error: Response format mismatch."
+                
+                import re
+                score_match = re.search(r"SCORE:\s*([0-1]\.[0-9]+|[01])", content, re.IGNORECASE)
+                if score_match:
+                    score = float(score_match.group(1))
+                
+                reason_match = re.search(r"REASONING:\s*(.*)", content, re.IGNORECASE | re.DOTALL)
+                if reason_match:
+                    reasoning = reason_match.group(1).strip()
+                
+                return score, reasoning
+                
+        except Exception as e:
+            if attempt == max_retries - 1:
+                logger.error(f"AI Deep Analysis exhausted retries: {e}")
+                return 0.0, f"AI Analysis Unavailable: {e}"
             
-            # Extract score and reasoning
-            score = 0.0
-            reasoning = "AI Analysis Error: Response format mismatch."
+            wait_time = (attempt * 5) + 5
+            time.sleep(wait_time)
             
-            import re
-            score_match = re.search(r"SCORE:\s*([0-1]\.[0-9]+|[01])", content, re.IGNORECASE)
-            if score_match:
-                score = float(score_match.group(1))
-            
-            reason_match = re.search(r"REASONING:\s*(.*)", content, re.IGNORECASE | re.DOTALL)
-            if reason_match:
-                reasoning = reason_match.group(1).strip()
-            
-            return score, reasoning
-            
-    except Exception as e:
-        logger.warning(f"AI Deep Analysis failed: {e}")
-        return 0.0, f"AI Analysis Unavailable: {e}"
+    return 0.0, "AI Analysis Unavailable after retries."
