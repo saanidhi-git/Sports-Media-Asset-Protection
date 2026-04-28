@@ -30,6 +30,12 @@
 - **Notice Generation:** Automated creation of copyright infringement notices.
 - **Blockchain Proof:** Immutable anchoring of asset fingerprints for legal enforcement.
 
+### 5. Authentication & Security (JWT)
+- **OAuth2 with Password Flow:** Secure login using `FastAPI` and `JOSE` JWT tokens.
+- **Role-Based Access:** Protected API endpoints and frontend guards to ensure only authorized operators can manage assets and scans.
+- **Bcrypt Hashing:** Industry-standard password encryption for user security.
+- **Token-Based Interceptor:** Angular interceptor automatically attaches JWT tokens to outgoing API requests for seamless, secure communication.
+
 ---
 
 ## 📸 Visual Tour
