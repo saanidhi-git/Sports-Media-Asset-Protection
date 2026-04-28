@@ -1,4 +1,4 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -11,26 +11,40 @@ import { AuthService } from '../core/services/auth.service';
   templateUrl: './login-register.html',
   styleUrl: './login-register.css',
 })
-export class LoginRegister {
+export class LoginRegister implements OnInit {
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
   
   protected readonly activeTab = signal<'signin' | 'create'>('signin');
   protected email = '';
   protected password = '';
+  protected confirmPassword = '';
   protected errorMessage = signal<string | null>(null);
   protected successMessage = signal<string | null>(null);
+
+  ngOnInit() {
+    // If already logged in, skip the login page
+    if (this.authService.isAuthenticated()) {
+      this.router.navigate(['/home']);
+    }
+  }
 
   setTab(tab: 'signin' | 'create') {
     this.activeTab.set(tab);
     this.errorMessage.set(null);
     this.successMessage.set(null);
+    this.password = '';
+    this.confirmPassword = '';
   }
 
   submit() {
     if (this.activeTab() === 'signin') {
       this.login();
     } else {
+      if (this.password !== this.confirmPassword) {
+        this.errorMessage.set('Passwords do not match.');
+        return;
+      }
       this.register();
     }
   }

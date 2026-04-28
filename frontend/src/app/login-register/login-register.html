@@ -29,7 +29,7 @@
     </div>
 
     <!-- FORM SECTION -->
-    <div class="form-body">
+    <form class="form-body" (submit)="submit(); $event.preventDefault()">
       <div class="error-banner" *ngIf="errorMessage()">
         {{ errorMessage() }}
       </div>
@@ -40,7 +40,7 @@
 
       <div class="form-row">
         <label>OPERATOR EMAIL / ID</label>
-        <input type="text" [(ngModel)]="email" placeholder="OPERATOR@SHIELD.MEDIA">
+        <input type="text" name="email" [(ngModel)]="email" placeholder="OPERATOR@SHIELD.MEDIA">
       </div>
 
       <div class="form-row">
@@ -48,16 +48,16 @@
           <label>PASSWORD</label>
           <a href="#" class="forgot-link" *ngIf="activeTab() === 'signin'">FORGOT?</a>
         </div>
-        <input type="password" [(ngModel)]="password" placeholder="••••••••••••">
+        <input type="password" name="password" [(ngModel)]="password" placeholder="••••••••••••">
       </div>
 
       <!-- CONFIRM PASSWORD FOR REGISTRATION -->
       <div class="form-row" *ngIf="activeTab() === 'create'">
         <label>CONFIRM PASSWORD</label>
-        <input type="password" placeholder="••••••••••••">
+        <input type="password" name="confirmPassword" [(ngModel)]="confirmPassword" placeholder="••••••••••••">
       </div>
 
-      <button class="btn btn-success btn-full" (click)="submit()" [disabled]="!email || !password">
+      <button type="submit" class="btn btn-success btn-full" [disabled]="!email || !password">
         <span *ngIf="activeTab() === 'signin'">ESTABLISH CONNECTION</span>
         <span *ngIf="activeTab() === 'create'">INITIALIZE ACCOUNT</span>
         <span class="btn-icon">→</span>
@@ -68,8 +68,8 @@
       </div>
 
       <div class="sso-grid">
-        <button class="btn btn-sm">GOOGLE ID</button>
+        <button type="button" class="btn btn-sm">GOOGLE ID</button>
       </div>
-    </div>
+    </form>
   </main>
 </div>
