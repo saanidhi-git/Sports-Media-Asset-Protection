@@ -9,8 +9,7 @@
 
 ---
 
-## 🚀 Core Features
-
+## 🚀 Core Features and Scalability
 ### 1. Asset Vault (Digital Fingerprinting)
 - **Ingestion:** Upload master sports media (clips, match highlights).
 - **Multi-Modal Hashing:** Generates `pHash` (Perceptual) and `PDQ` (Geometric) vectors for visual matching resistant to resizing and cropping.
